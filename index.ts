@@ -3,7 +3,7 @@
  * 高度利用者向紧急地震速报解析器 
  * 解析方法来自 eew_parser(https://github.com/mmasaki/eew_parser)
 */
-class EEWParser {
+export default class EEWParser {
     private telegram: string
     /**
      * @param telegram
