@@ -1,6 +1,7 @@
 /** 
- * eew_parser.js
+ * eew_parser.ts
  * 高度利用者向紧急地震速报解析器 
+ * 解析方法来自 eew_parser(https://github.com/mmasaki/eew_parser)
 */
 class EEWParser {
     private telegram: string

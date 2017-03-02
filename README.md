@@ -13,5 +13,5 @@ console.log(test.to_s())
 ```
 
 ## 参考
-* [eew_parser](https://github.com/mmasaki/eew_parser)
+* 解析方法来自：[eew_parser](https://github.com/mmasaki/eew_parser)
 * [高度利用者向け緊急地震速報コード電文フォーマット - 緊急地震速報メモ](http://eew.mizar.jp/excodeformat)
