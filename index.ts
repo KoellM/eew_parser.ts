@@ -625,7 +625,19 @@ class EEWParser {
 震央位置の海陸判定: ${this.land_or_sea()}
 警報を含む内容かどうか: ${this.warning()}
 最大予測震度の変化: ${this.change()}
-最大予測震度の変化の理由: ${this.reason_of_change()}`
+最大予測震度の変化の理由: ${this.reason_of_change()}
+
+主要動到達までの時間及び最大予測震度`
+    for (let ebi of this.ebi()) {
+        str += `
+地域コード: ${ebi.area_code}
+地域名称: ${ebi.area_name}
+予測震度: ${ebi.intensity}
+予想到達時刻: ${ebi.arrival_time}
+警報を含むかどうか: ${ebi.warning}
+既に到達しているかどうか: ${ebi.arrival}
+        `
+    }
     return str
         }
     }
@@ -1039,7 +1051,7 @@ class EEWParser {
       }
     }
 
-    ebi(): Object {
+    ebi() {
         let data = []
         if(this.fastsub(135, 3) != "EBI") {
             return data
