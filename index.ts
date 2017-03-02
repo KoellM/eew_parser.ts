@@ -1072,7 +1072,7 @@ class EEWParser {
             } else if(this.fastsub(i+5, 2) == this.fastsub(i+7, 2)) {
                 local["intensity"] = this.to_seismic_intensity(this.fastsub(i+5, 2))
             } else {
-                local["intensity"] = `${this.fastsub(i+7, 2)}～${this.to_seismic_intensity(this.fastsub(i+5, 2))}`
+                local["intensity"] = `${this.to_seismic_intensity(this.fastsub(i+7, 2))}～${this.to_seismic_intensity(this.fastsub(i+5, 2))}`
             }
             /** 预想到达时间 */
             if(this.fastsub(i+10, 6) == "//////") {
