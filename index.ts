@@ -625,10 +625,10 @@ class EEWParser {
 震央位置の海陸判定: ${this.land_or_sea()}
 警報を含む内容かどうか: ${this.warning()}
 最大予測震度の変化: ${this.change()}
-最大予測震度の変化の理由: ${this.reason_of_change()}
-
-主要動到達までの時間及び最大予測震度`
+最大予測震度の変化の理由: ${this.reason_of_change()}`
     if(this.ebi().length) { 
+        str += `
+主要動到達までの時間及び最大予測震度`
         for (let ebi of this.ebi()) {
             str += `
 地域コード: ${ebi.area_code}
