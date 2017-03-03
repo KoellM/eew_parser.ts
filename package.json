@@ -1,0 +1,19 @@
+{
+  "name": "eew_parser.ts",
+  "version": "0.1.0",
+  "description": "TypeScript 紧急地震速报(緊急地震速報)电文解析器。",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoellM/eew_parser.js.git"
+  },
+  "author": "Koell",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KoellM/eew_parser.js/issues"
+  },
+  "homepage": "https://github.com/KoellM/eew_parser.js#readme"
+}
