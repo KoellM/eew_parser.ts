@@ -599,8 +599,8 @@ export default class EEWParser {
 コードが続くかどうか: ${this.continue()}
 地震発生時刻もしくは地震検知時刻: ${this.earthquake_time()}
 地震識別番号: ${this.id()}
-発表状況(訂正等)の指示: ${this.status()}
-発表する高度利用者向け緊急地震速報の番号(地震単位での通番): ${this.number()}`
+発表状況の指示: ${this.status()}
+発表する高度利用者向け緊急地震速報の番号: ${this.number()}`
         } else {
         let str = `電文種別: ${this.type()}
 発信官署: ${this.from()}
@@ -610,13 +610,13 @@ export default class EEWParser {
 コードが続くかどうか: ${this.continue()}
 地震発生時刻もしくは地震検知時刻: ${this.earthquake_time()}
 地震識別番号: ${this.id()}
-発表状況(訂正等)の指示: ${this.status()}
-発表する高度利用者向け緊急地震速報の番号(地震単位での通番): ${this.number()}
+発表状況の指示: ${this.status()}
+発表する高度利用者向け緊急地震速報の番号: ${this.number()}
 震央地名: ${this.epicenter()}
 震央の位置: ${this.position()}
-震源の深さ(単位 km)(不明・未設定時,キャンセル時:///): ${this.depth()}
-マグニチュード(不明・未設定時、キャンセル時:///): ${this.magnitude()}
-最大予測震度(不明・未設定時、キャンセル時://): ${this.seismic_intensity()}
+震源の深さ: ${this.depth()}
+マグニチュード: ${this.magnitude()}
+最大予測震度: ${this.seismic_intensity()}
 震央の確からしさ: ${this.probability_of_position()}
 震源の深さの確からしさ: ${this.probability_of_depth()}
 マグニチュードの確からしさ: ${this.probability_of_magnitude()}
@@ -700,14 +700,14 @@ export default class EEWParser {
         }
     }
 
-    /** 電文の発表時刻のTimeオブジェクトを返します。 */
+    /** 電文の発表時刻 */
     report_time(): Date {
         let time = `20${this.fastsub(9, 2)}-${this.fastsub(11, 2)}-${this.fastsub(13, 2)}T${this.fastsub(15, 2)}:${this.fastsub(17, 2)}:${this.fastsub(19, 2)}+09:00`
         let report_time = new Date(time)
         return report_time
     }
 
-    /** 電文がこの電文を含め何通あるか(Integer) */
+    /** 電文がこの電文を含め何通あるか */
     number_of_telegram(): number {
         let number_of_telegram = this.fastsub(23, 1)
         if(!new RegExp(/[^\d]/).test(number_of_telegram)) {
@@ -729,14 +729,14 @@ export default class EEWParser {
         }
     }
     
-    /** 地震発生時刻もしくは地震検知時刻のTimeオブジェクトを返します。 */
+    /** 地震発生時刻もしくは地震検知時刻 */
     earthquake_time(): Date {
         let time = `20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(32, 2)}:${this.fastsub(34, 2)}:${this.fastsub(36, 2)}+09:00`
         let earthquake_time = new Date(time)
         return earthquake_time
     }
     
-    /** 地震識別番号(String) */
+    /** 地震識別番号 */
     id(): string {
         let id = this.fastsub(41, 14)
         if(!new RegExp(/[^\d]/).test(id)) {
@@ -746,7 +746,7 @@ export default class EEWParser {
         }
     }
 
-    /** 発表状況(訂正等)の指示 */
+    /** 発表状況の指示 */
     status(): string {
         switch(this.fastsub(59, 1)) {
             case "0":
@@ -766,7 +766,7 @@ export default class EEWParser {
         }
     }
 
-    /** 最終報であればtrueを、そうでなければfalseを返します。 */
+    /** 最終報 */
     final(): boolean {
         switch(this.fastsub(59, 1)) {
             case "9":
@@ -778,7 +778,7 @@ export default class EEWParser {
         }
     }
 
-    /** 発表する高度利用者向け緊急地震速報の番号(地震単位での通番)(Integer) */
+    /** 発表する高度利用者向け緊急地震速報の番号 */
     number(): number {
         let number = this.fastsub(60, 2)
         if(!new RegExp(/[^\d]/).test(number)) {
@@ -793,6 +793,8 @@ export default class EEWParser {
         let key = this.fastsub(86, 3)
         if(!new RegExp(/[^\d]/).test(key)) {
             return EEWParser.EpicenterCode()[key]
+        } else if(key == "///") {
+            return ""
         } else {
             throw new Error("電文の形式が不正です(震央の名称)")
         }
@@ -801,7 +803,7 @@ export default class EEWParser {
     position(): string {
         let position = this.fastsub(90, 10)
         if(position == "//// /////") {
-            return "不明/未設定"
+            return "不明"
         } else {
             if(!new RegExp(/[^\d|\s|N|E]/).test(position)) {
                 return `${position[0]}${position[1]}${position[2]}.${position[3]}${position[4]}${position[5]}${position[6]}${position[7]}${position[8]}.${position[9]}`
@@ -814,7 +816,7 @@ export default class EEWParser {
     depth() {
         let depth = this.fastsub(101, 3)
         if(depth == "///") {
-            return "不明/未設定"
+            return "不明"
         } else {
             if(!new RegExp(/[^\d]/).test(depth)) {
                 return parseInt(depth)
@@ -827,7 +829,7 @@ export default class EEWParser {
     magnitude() {
         let magnitude = this.fastsub(105, 2)
         if(magnitude == "//") {
-            return "不明/未設定"
+            return "不明"
         } else {
             if(!new RegExp(/[^\d]/).test(magnitude)) {
                 return parseFloat(`${magnitude[0]}.${magnitude[1]}`)
@@ -840,7 +842,7 @@ export default class EEWParser {
     to_seismic_intensity(str): string {
         switch(str) {
             case "//":
-                return "不明又/未設定"
+                return "不明"
             case "01":
                 return "1"
             case "02":
