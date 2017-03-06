@@ -794,7 +794,7 @@ export default class EEWParser {
         if(!new RegExp(/[^\d]/).test(key)) {
             return EEWParser.EpicenterCode()[key]
         } else if(key == "///") {
-            return ""
+            return null
         } else {
             throw new Error("電文の形式が不正です(震央の名称)")
         }
