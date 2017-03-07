@@ -597,7 +597,7 @@ export default class EEWParser {
 電文の発表時刻: ${this.report_time()}
 電文がこの電文を含め何通あるか: ${this.number_of_telegram()}
 コードが続くかどうか: ${this.continue()}
-地震発生時刻もしくは地震検知時刻: ${this.earthquake_time()}
+地震発生時刻: ${this.earthquake_time()}
 地震識別番号: ${this.id()}
 発表状況の指示: ${this.status()}
 発表する高度利用者向け緊急地震速報の番号: ${this.number()}`
@@ -608,13 +608,13 @@ export default class EEWParser {
 電文の発表時刻: ${this.report_time()}
 電文がこの電文を含め何通あるか: ${this.number_of_telegram()}
 コードが続くかどうか: ${this.continue()}
-地震発生時刻もしくは地震検知時刻: ${this.earthquake_time()}
+地震発生時刻: ${this.earthquake_time()}
 地震識別番号: ${this.id()}
 発表状況の指示: ${this.status()}
 発表する高度利用者向け緊急地震速報の番号: ${this.number()}
 震央地名: ${this.epicenter()}
 震央の位置: ${this.position()}
-震源の深さ: ${this.depth()}
+震源の深さ(km): ${this.depth()}
 マグニチュード: ${this.magnitude()}
 最大予測震度: ${this.seismic_intensity()}
 震央の確からしさ: ${this.probability_of_position()}
@@ -625,10 +625,12 @@ export default class EEWParser {
 震央位置の海陸判定: ${this.land_or_sea()}
 警報を含む内容かどうか: ${this.warning()}
 最大予測震度の変化: ${this.change()}
-最大予測震度の変化の理由: ${this.reason_of_change()}`
+最大予測震度の変化の理由: ${this.reason_of_change()}
+`
     if(this.ebi().length) { 
         str += `
-主要動到達までの時間及び最大予測震度`
+最大予測震度と主要動到達予測時刻
+`
         for (let ebi of this.ebi()) {
             str += `
 地域コード: ${ebi.area_code}
@@ -674,7 +676,19 @@ export default class EEWParser {
             case "05":
                 return "福岡"
             case "06":
-                return "沖縄"
+                return "沖縄" // 不确定冲绳是否还在继续发信。
+            case "11": 
+                return "札幌"
+            case "12":
+                return "仙台"
+            case "13":
+                return "東京"
+            case "14":
+                return "大阪"
+            case "15":
+                return "福岡"
+            case "16":
+                return "沖縄" // 不确定冲绳是否还在继续发信。
             default:
                 throw new Error("電文の形式が不正です(発信官署)")
         }
@@ -692,7 +706,7 @@ export default class EEWParser {
             case "11":
                 return "訓練取り消し"
             case "20":
-                return "参考情報またはテキスト"
+                return "参考情報またはテスト"
             case "30":
                 return "コード部のみの配信試験"
             default:
@@ -708,13 +722,9 @@ export default class EEWParser {
     }
 
     /** 電文がこの電文を含め何通あるか */
-    number_of_telegram(): number {
+    number_of_telegram(): string {
         let number_of_telegram = this.fastsub(23, 1)
-        if(!new RegExp(/[^\d]/).test(number_of_telegram)) {
-            return parseInt(number_of_telegram); 
-        } else {
-            throw new Error("電文の形式が不正です")
-        }
+        return number_of_telegram; 
     }
 
     /** コードが続くかどうか */
@@ -866,6 +876,10 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * 最大预测震度
+     * 震源深度超过 150km 时，将会返回不明。
+     */
     seismic_intensity(): string {
         try {
             return this.to_seismic_intensity(this.fastsub(108, 2))
@@ -935,15 +949,15 @@ export default class EEWParser {
             case "2":
                 return "防災科研システム[防災科学技術研究所データ]"
             case "3":
-                return "全点P相(最大5点)[気象庁データ]"
+                return "全点(最大5点)P相[気象庁データ]"
             case "4":
                 return "P相/全相混在[気象庁データ]"
             case "5":
-                return "全点全相(最大5点)[気象庁データ]"
+                return "全点(最大5点)全相[気象庁データ]"
             case "6":
                 return "EPOS[気象庁データ]"
             case "7":
-                return "未設定"
+                return "未定義"
             case "8":
                 return "P波/S波レベル越え[気象庁データ]"
             case "9":
@@ -961,11 +975,13 @@ export default class EEWParser {
             case "2":
                 return "テリトリー法(2点)[気象庁データ]"
             case "3":
-                return "グリッドサーチ法(3点/4点)[気象庁データ]"
+                return "グリッドサーチ法(3点)[気象庁データ]"
             case "4":
-                return "グリッドサーチ法(5点)[気象庁データ]"
-            case "5":case "6":case "7":case "8":case "9":case "0":
-                return "未設定"
+                return "グリッドサーチ法(4点)[気象庁データ]"
+            case "5":
+                return "グリッドサーチ法(3点)[気象庁データ]"
+            case "6":case "7":case "8":case "9":case "0":
+                return "未使用"
             case "/":
                 return "不明/未設定"
             default:
@@ -981,9 +997,9 @@ export default class EEWParser {
             case "3":
                 return "グリッドサーチ法(3点/4点)[気象庁データ]"
             case "4":
-                return "グリッドサーチ法(5点)[気象庁データ]"
+                return "グリッドサーチ法(5点以上)[気象庁データ]"
             case "5":case "6":case "7":case "8":case "9":case "0":
-                return "未設定"
+                return "未使用"
             case "/":
                 return "不明/未設定"
             default:
