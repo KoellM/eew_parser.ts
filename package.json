@@ -2,7 +2,7 @@
   "name": "eew_parser.ts",
   "version": "0.1.0",
   "description": "TypeScript 紧急地震速报(緊急地震速報)电文解析器。",
-  "main": "index.ts",
+  "main": "./dist/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
