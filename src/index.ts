@@ -18,7 +18,7 @@ export default class EEWParser {
     }
 
     private fastsub(start: number, num: number = 0): string {
-        let numend: number = start + num
+        let numend: number = start + num;
         return this.telegram.substring(start, numend)
     }
 
@@ -28,50 +28,50 @@ export default class EEWParser {
     }
 
     /** 返回紧急地震速报内容 */
-    to_s(): string {
-        if (this.type() == "キャンセル報") {
+    toString(): string {
+        if (this.type == "キャンセル報") {
             return `
-電文種別: ${this.type()}
-発信官署: ${this.from()}
-訓練等の識別符: ${this.drill_type()}
-電文の発表時刻: ${this.report_time()}
-電文がこの電文を含め何通あるか: ${this.number_of_telegram()}
-コードが続くかどうか: ${this.continue()}
-地震発生時刻: ${this.earthquake_time()}
-地震識別番号: ${this.id()}
-発表状況の指示: ${this.status()}
-発表する高度利用者向け緊急地震速報の番号: ${this.number()}`
+電文種別: ${this.type}
+発信官署: ${this.from}
+訓練等の識別符: ${this.drillType}
+電文の発表時刻: ${this.reportTime}
+電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
+コードが続くかどうか: ${this.isContinue}
+地震発生時刻: ${this.earthquakeTime}
+地震識別番号: ${this.id}
+発表状況の指示: ${this.status}
+発表する高度利用者向け緊急地震速報の番号: ${this.number}`
         } else {
-            let str = `電文種別: ${this.type()}
-発信官署: ${this.from()}
-訓練等の識別符: ${this.drill_type()}
-電文の発表時刻: ${this.report_time()}
-電文がこの電文を含め何通あるか: ${this.number_of_telegram()}
-コードが続くかどうか: ${this.continue()}
-地震発生時刻: ${this.earthquake_time()}
-地震識別番号: ${this.id()}
-発表状況の指示: ${this.status()}
-発表する高度利用者向け緊急地震速報の番号: ${this.number()}
-震央地名: ${this.epicenter()}
-震央の位置: ${this.position()}
-震源の深さ(km): ${this.depth()}
-マグニチュード: ${this.magnitude()}
-最大予測震度: ${this.seismic_intensity()}
-震央の確からしさ: ${this.probability_of_position()}
-震源の深さの確からしさ: ${this.probability_of_depth()}
-マグニチュードの確からしさ: ${this.probability_of_magnitude()}
-震央の確からしさ(気象庁の部内システムでの利用): ${this.probability_of_position_jma()}
-震源の深さの確からしさ(気象庁の部内システムでの利用): ${this.probability_of_depth_jma()}
-震央位置の海陸判定: ${this.land_or_sea()}
-警報を含む内容かどうか: ${this.warning()}
-最大予測震度の変化: ${this.change()}
-最大予測震度の変化の理由: ${this.reason_of_change()}
+            let str = `電文種別: ${this.type}
+発信官署: ${this.from}
+訓練等の識別符: ${this.drillType}
+電文の発表時刻: ${this.reportTime}
+電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
+コードが続くかどうか: ${this.isContinue}
+地震発生時刻: ${this.earthquakeTime}
+地震識別番号: ${this.id}
+発表状況の指示: ${this.status}
+発表する高度利用者向け緊急地震速報の番号: ${this.number}
+震央地名: ${this.epicenter}
+震央の位置: ${this.position}
+震源の深さ(km): ${this.depth}
+マグニチュード: ${this.magnitude}
+最大予測震度: ${this.seismicIntensity}
+震央の確からしさ: ${this.probabilityOfPosition}
+震源の深さの確からしさ: ${this.probabilityOfDepth}
+マグニチュードの確からしさ: ${this.probabilityOfMagnitude}
+震央の確からしさ(気象庁の部内システムでの利用): ${this.probabilityOfPositionJMA}
+震源の深さの確からしさ(気象庁の部内システムでの利用): ${this.probabilityOfDepthJMA}
+震央位置の海陸判定: ${this.landOrSea}
+警報を含む内容かどうか: ${this.isWarning}
+最大予測震度の変化: ${this.isChanged}
+最大予測震度の変化の理由: ${this.reasonOfChange}
 `
-            if (this.ebi().length) {
+            if (this.ebi.length) {
                 str += `
 最大予測震度と主要動到達予測時刻
 `
-                for (let ebi of this.ebi()) {
+                for (let ebi of this.ebi) {
                     str += `
 地域コード: ${ebi.area_code}
 地域名称: ${ebi.area_name}
@@ -87,7 +87,7 @@ export default class EEWParser {
     }
 
     /** 电文类型 */
-    type(): string {
+    get type(): string {
         const telegramCode = this.fastsub(0, 2);
         const telegramType = TelegramType[telegramCode];
         if (telegramType === undefined) {
@@ -98,7 +98,7 @@ export default class EEWParser {
     }
 
     /** 発信官署 */
-    from(): string {
+    get from(): string {
         switch (this.fastsub(3, 2)) {
             case "01":
                 return "札幌"
@@ -130,7 +130,7 @@ export default class EEWParser {
     }
 
     /** 訓練等の識別符 */
-    drill_type(): string {
+    get drillType(): string {
         const drillTypeCode = this.fastsub(6, 2);
         const drillType = DrillType[drillTypeCode];
         if (drillType === undefined) {
@@ -141,20 +141,20 @@ export default class EEWParser {
     }
 
     /** 電文の発表時刻 */
-    report_time(): Date {
+    get reportTime(): Date {
         let time = `20${this.fastsub(9, 2)}-${this.fastsub(11, 2)}-${this.fastsub(13, 2)}T${this.fastsub(15, 2)}:${this.fastsub(17, 2)}:${this.fastsub(19, 2)}+09:00`
         let report_time = new Date(time)
         return report_time
     }
 
     /** 電文がこの電文を含め何通あるか */
-    number_of_telegram(): string {
+    get numberOfTelegram(): string {
         let number_of_telegram = this.fastsub(23, 1)
         return number_of_telegram;
     }
 
     /** コードが続くかどうか */
-    continue(): boolean {
+    get isContinue(): boolean {
         switch (this.fastsub(24, 1)) {
             case "1":
                 return true
@@ -166,14 +166,14 @@ export default class EEWParser {
     }
 
     /** 地震発生時刻もしくは地震検知時刻 */
-    earthquake_time(): Date {
+    get earthquakeTime(): Date {
         let time = `20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(32, 2)}:${this.fastsub(34, 2)}:${this.fastsub(36, 2)}+09:00`
         let earthquake_time = new Date(time)
         return earthquake_time
     }
 
     /** 地震識別番号 */
-    id(): string {
+    get id(): string {
         let id = this.fastsub(41, 14)
         if (!new RegExp(/[^\d]/).test(id)) {
             return id
@@ -183,7 +183,7 @@ export default class EEWParser {
     }
 
     /** 発表状況の指示 */
-    status(): string {
+    get status(): string {
         switch (this.fastsub(59, 1)) {
             case "0":
                 return "通常発表"
@@ -203,7 +203,7 @@ export default class EEWParser {
     }
 
     /** 最終報 */
-    final(): boolean {
+    get final(): boolean {
         switch (this.fastsub(59, 1)) {
             case "9":
                 return true
@@ -215,7 +215,7 @@ export default class EEWParser {
     }
 
     /** 発表する高度利用者向け緊急地震速報の番号 */
-    number(): number {
+    get number(): number {
         let number = this.fastsub(60, 2)
         if (!new RegExp(/[^\d]/).test(number)) {
             return parseInt(number)
@@ -225,7 +225,7 @@ export default class EEWParser {
     }
 
     /** 震央の名称 */
-    epicenter(): string {
+    get epicenter(): string {
         let key = this.fastsub(86, 3)
         if (!new RegExp(/[^\d]/).test(key)) {
             return EpicenterCode[key]
@@ -236,7 +236,7 @@ export default class EEWParser {
         }
     }
 
-    position(): string {
+    get position(): string {
         let position = this.fastsub(90, 10)
         if (position == "//// /////") {
             return "不明"
@@ -249,7 +249,7 @@ export default class EEWParser {
         }
     }
 
-    depth() {
+    get depth() {
         let depth = this.fastsub(101, 3)
         if (depth == "///") {
             return "不明"
@@ -262,7 +262,7 @@ export default class EEWParser {
         }
     }
 
-    magnitude() {
+    get magnitude() {
         let magnitude = this.fastsub(105, 2)
         if (magnitude == "//") {
             return "不明"
@@ -275,7 +275,7 @@ export default class EEWParser {
         }
     }
 
-    to_seismic_intensity(str): string {
+    toSeismicIntensity(str): string {
         switch (str) {
             case "//":
                 return "不明"
@@ -306,15 +306,15 @@ export default class EEWParser {
      * 最大预测震度
      * 震源深度超过 150km 时，将会返回不明。
      */
-    seismic_intensity(): string {
+    get seismicIntensity(): string {
         try {
-            return this.to_seismic_intensity(this.fastsub(108, 2))
+            return this.toSeismicIntensity(this.fastsub(108, 2))
         } catch (e) {
             throw new Error("電文の形式が不正です(最大予測震度)")
         }
     }
 
-    probability_of_position(): string {
+    get probabilityOfPosition(): string {
         switch (this.fastsub(113, 1)) {
             case "1":
                 return "P波/S波レベル越え、またはテリトリー法(1点)[気象庁データ]"
@@ -341,7 +341,7 @@ export default class EEWParser {
         }
     }
 
-    probability_of_depth(): string {
+    get probabilityOfDepth(): string {
         switch (this.fastsub(114, 1)) {
             case "1":
                 return "P波/S波レベル越え、またはテリトリー法(1点)[気象庁データ]"
@@ -368,7 +368,7 @@ export default class EEWParser {
         }
     }
 
-    probability_of_magnitude(): string {
+    get probabilityOfMagnitude(): string {
         switch (this.fastsub(115, 1)) {
             case "1":
                 return "未設定"
@@ -394,7 +394,8 @@ export default class EEWParser {
                 throw new Error("電文の形式が不正です(マグニチュードの確からしさ)")
         }
     }
-    probability_of_position_jma(): string {
+    
+    get probabilityOfPositionJMA(): string {
         switch (this.fastsub(116, 1)) {
             case "1":
                 return "P波/S波レベル越え又はテリトリー法(1点)[気象庁データ]"
@@ -414,7 +415,7 @@ export default class EEWParser {
                 throw new Error("電文の形式が不正です(震央の確からしさ[気象庁の部内システムでの利用])")
         }
     }
-    probability_of_depth_jma(): string {
+    get probabilityOfDepthJMA(): string {
         switch (this.fastsub(117, 1)) {
             case "1":
                 return "P波/S波レベル越え又はテリトリー法(1点)[気象庁データ]"
@@ -433,7 +434,7 @@ export default class EEWParser {
         }
     }
 
-    land_or_sea(): string {
+    get landOrSea(): string {
         switch (this.fastsub(121, 1)) {
             case "0":
                 return "陸域"
@@ -448,7 +449,7 @@ export default class EEWParser {
         }
     }
 
-    warning(): boolean {
+    get isWarning(): boolean {
         switch (this.fastsub(122, 1)) {
             case "0": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": case "/":
                 return false
@@ -459,7 +460,7 @@ export default class EEWParser {
         }
     }
 
-    change(): string {
+    get isChanged(): string {
         switch (this.fastsub(129, 1)) {
             case "0":
                 return "ほとんど変化無し"
@@ -476,7 +477,7 @@ export default class EEWParser {
         }
     }
 
-    reason_of_change(): string {
+    get reasonOfChange(): string {
         switch (this.fastsub(130, 1)) {
             case "0":
                 return "変化無し"
@@ -497,7 +498,7 @@ export default class EEWParser {
         }
     }
 
-    ebi() {
+    get ebi() {
         let data = []
         if (this.fastsub(135, 3) != "EBI") {
             return data
@@ -512,11 +513,11 @@ export default class EEWParser {
             }
             /** 震度 */
             if (this.fastsub(i + 7, 2) == "//") {
-                local["intensity"] = `${this.to_seismic_intensity(this.fastsub(i + 5, 2))}以上`
+                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 5, 2))}以上`
             } else if (this.fastsub(i + 5, 2) == this.fastsub(i + 7, 2)) {
-                local["intensity"] = this.to_seismic_intensity(this.fastsub(i + 5, 2))
+                local["intensity"] = this.toSeismicIntensity(this.fastsub(i + 5, 2))
             } else {
-                local["intensity"] = `${this.to_seismic_intensity(this.fastsub(i + 7, 2))}～${this.to_seismic_intensity(this.fastsub(i + 5, 2))}`
+                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 7, 2))}～${this.toSeismicIntensity(this.fastsub(i + 5, 2))}`
             }
             /** 预想到达时间 */
             if (this.fastsub(i + 10, 6) == "//////") {
