@@ -13,17 +13,23 @@ export class TelegramFormatInvalidError extends Error {
  * 解析方法来自 eew_parser(https://github.com/mmasaki/eew_parser)
 */
 export default class EEWParser {
-    private telegram: string
+    private telegram: string;
+    private language: string;
     /**
      * @param telegram
     */
-    constructor(telegram: string) {
+    constructor(telegram: string, language: string = 'ja') {
         this.telegram = telegram;
+        this.language = language;
     }
 
     private fastsub(start: number, num: number = 0): string {
         const numend: number = start + num;
         return this.telegram.substring(start, numend)
+    }
+
+    private parseCode(codesheet: (key: string, language: string) => string, key: string): string {
+        return codesheet(key, this.language);
     }
 
     /** 返回电文 */
@@ -115,7 +121,7 @@ export default class EEWParser {
     /** 訓練等の識別符 */
     get drillType(): string {
         const drillTypeCode = this.fastsub(6, 2);
-        const drillType = Definitions.DrillTypeCode[drillTypeCode];
+        const drillType = this.parseCode(Definitions.DrillTypeCode, drillTypeCode);
         if (drillType === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DRILL_TYPE);
         } else {
@@ -131,9 +137,9 @@ export default class EEWParser {
     }
 
     /** 電文がこの電文を含め何通あるか */
-    get numberOfTelegram(): string {
-        let number_of_telegram = this.fastsub(23, 1)
-        return number_of_telegram;
+    get numberOfTelegram(): number {
+        let number_of_telegram = this.fastsub(23, 1);
+        return parseInt(number_of_telegram);
     }
 
     /** コードが続くかどうか */
@@ -252,33 +258,6 @@ export default class EEWParser {
         }
     }
 
-    toSeismicIntensity(str): string {
-        switch (str) {
-            case "//":
-                return "不明"
-            case "01":
-                return "1"
-            case "02":
-                return "2"
-            case "03":
-                return "3"
-            case "04":
-                return "4"
-            case "5-":
-                return "5弱"
-            case "5+":
-                return "5強"
-            case "6-":
-                return "6弱"
-            case "6+":
-                return "6強"
-            case "07":
-                return "7"
-            default:
-                throw new Error("電文の形式が不正です(震度)")
-        }
-    }
-
     /**
      * 最大预测震度
      * 震源深度超过 150km 时，将会返回不明。
@@ -304,7 +283,7 @@ export default class EEWParser {
             case "4":
                 return "グリッドサーチ法(5点)[気象庁データ]"
             case "5":
-                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究所データ]"
+                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究データ]"
             case "6":
                 return "防災科研システム(5点以上)[防災科学技術研究所データ]"
             case "7":
@@ -492,11 +471,11 @@ export default class EEWParser {
             }
             /** 震度 */
             if (this.fastsub(i + 7, 2) == "//") {
-                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 5, 2))}以上`
+                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}以上`
             } else if (this.fastsub(i + 5, 2) == this.fastsub(i + 7, 2)) {
-                local["intensity"] = this.toSeismicIntensity(this.fastsub(i + 5, 2))
+                local["intensity"] = Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]
             } else {
-                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 7, 2))}～${this.toSeismicIntensity(this.fastsub(i + 5, 2))}`
+                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 7, 2)]}～${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}`
             }
             /** 预想到达时间 */
             if (this.fastsub(i + 10, 6) == "//////") {
