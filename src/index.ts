@@ -1,7 +1,11 @@
-import AreaCode from './definitions/AreaCode';
-import EpicenterCode from './definitions/EpicenterCode';
-import TelegramType from './definitions/TelegramType';
-import DrillType from './definitions/DrillType';
+import * as Definitions from './definitions';
+
+export class TelegramFormatInvalidError extends Error {
+    constructor(message: string = Definitions.Errors.UNKNOWN_ERROR) {
+        super(message);
+        this.name = "telegram_format_invalid";
+    }
+}
 
 /** 
  * eew_parser.ts
@@ -9,17 +13,23 @@ import DrillType from './definitions/DrillType';
  * 解析方法来自 eew_parser(https://github.com/mmasaki/eew_parser)
 */
 export default class EEWParser {
-    private telegram: string
+    private telegram: string;
+    private language: string;
     /**
      * @param telegram
     */
-    constructor(telegram: string) {
+    constructor(telegram: string, language: string = 'ja') {
         this.telegram = telegram;
+        this.language = language;
     }
 
     private fastsub(start: number, num: number = 0): string {
-        let numend: number = start + num;
+        const numend: number = start + num;
         return this.telegram.substring(start, numend)
+    }
+
+    private parseCode(codesheet: (key: string, language: string) => string, key: string): string {
+        return codesheet(key, this.language);
     }
 
     /** 返回电文 */
@@ -32,7 +42,7 @@ export default class EEWParser {
         if (this.type == "キャンセル報") {
             return `
 電文種別: ${this.type}
-発信官署: ${this.from}
+発信官署: ${this.forecastOffice}
 訓練等の識別符: ${this.drillType}
 電文の発表時刻: ${this.reportTime}
 電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
@@ -40,10 +50,10 @@ export default class EEWParser {
 地震発生時刻: ${this.earthquakeTime}
 地震識別番号: ${this.id}
 発表状況の指示: ${this.status}
-発表する高度利用者向け緊急地震速報の番号: ${this.number}`
+発表する高度利用者向け緊急地震速報の番号: ${this.EEWID}`
         } else {
             let str = `電文種別: ${this.type}
-発信官署: ${this.from}
+発信官署: ${this.forecastOffice}
 訓練等の識別符: ${this.drillType}
 電文の発表時刻: ${this.reportTime}
 電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
@@ -51,9 +61,9 @@ export default class EEWParser {
 地震発生時刻: ${this.earthquakeTime}
 地震識別番号: ${this.id}
 発表状況の指示: ${this.status}
-発表する高度利用者向け緊急地震速報の番号: ${this.number}
-震央地名: ${this.epicenter}
-震央の位置: ${this.position}
+発表する高度利用者向け緊急地震速報の番号: ${this.EEWID}
+震央地名: ${this.epicenterName}
+震央の位置: ${this.epicenterCoordinate}
 震源の深さ(km): ${this.depth}
 マグニチュード: ${this.magnitude}
 最大予測震度: ${this.seismicIntensity}
@@ -89,7 +99,7 @@ export default class EEWParser {
     /** 电文类型 */
     get type(): string {
         const telegramCode = this.fastsub(0, 2);
-        const telegramType = TelegramType[telegramCode];
+        const telegramType = Definitions.TelegramTypeCode[telegramCode];
         if (telegramType === undefined) {
             throw new Error("電文の形式が不正です(電文種別コード)")
         } else {
@@ -98,43 +108,22 @@ export default class EEWParser {
     }
 
     /** 発信官署 */
-    get from(): string {
-        switch (this.fastsub(3, 2)) {
-            case "01":
-                return "札幌"
-            case "02":
-                return "仙台"
-            case "03":
-                return "東京"
-            case "04":
-                return "大阪"
-            case "05":
-                return "福岡"
-            case "06":
-                return "沖縄" // 不确定冲绳是否还在继续发信。
-            case "11":
-                return "札幌"
-            case "12":
-                return "仙台"
-            case "13":
-                return "東京"
-            case "14":
-                return "大阪"
-            case "15":
-                return "福岡"
-            case "16":
-                return "沖縄" // 不确定冲绳是否还在继续发信。
-            default:
-                throw new Error("電文の形式が不正です(発信官署)")
+    get forecastOffice(): string {
+        const officeCode = this.fastsub(3, 2);
+        const from = Definitions.ForecastOfficeCode[officeCode];
+        if (from === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_FORECAST_OFFICE);
+        } else {
+            return from;
         }
     }
 
     /** 訓練等の識別符 */
     get drillType(): string {
         const drillTypeCode = this.fastsub(6, 2);
-        const drillType = DrillType[drillTypeCode];
+        const drillType = this.parseCode(Definitions.DrillTypeCode, drillTypeCode);
         if (drillType === undefined) {
-            throw new Error("電文の形式が不正です(識別符)")
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DRILL_TYPE);
         } else {
             return drillType;
         }
@@ -148,95 +137,89 @@ export default class EEWParser {
     }
 
     /** 電文がこの電文を含め何通あるか */
-    get numberOfTelegram(): string {
-        let number_of_telegram = this.fastsub(23, 1)
-        return number_of_telegram;
+    get numberOfTelegram(): number {
+        let number_of_telegram = this.fastsub(23, 1);
+        return parseInt(number_of_telegram);
     }
 
     /** コードが続くかどうか */
     get isContinue(): boolean {
-        switch (this.fastsub(24, 1)) {
-            case "1":
-                return true
-            case "0":
-                return false
-            default:
-                throw new Error("電文の形式が不正です")
+        const continueFlag = this.fastsub(24, 1);
+        if (continueFlag === "1") {
+            return true;
+        } else if (continueFlag === "0") {
+            return false;
+        } else {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_CONTINUE_FLAG);
         }
     }
 
     /** 地震発生時刻もしくは地震検知時刻 */
     get earthquakeTime(): Date {
-        let time = `20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(32, 2)}:${this.fastsub(34, 2)}:${this.fastsub(36, 2)}+09:00`
-        let earthquake_time = new Date(time)
-        return earthquake_time
+        let time = `20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(32, 2)}:${this.fastsub(34, 2)}:${this.fastsub(36, 2)}+09:00`;
+        let earthquakeTime = new Date(time);
+        return earthquakeTime;
     }
 
     /** 地震識別番号 */
     get id(): string {
         let id = this.fastsub(41, 14)
         if (!new RegExp(/[^\d]/).test(id)) {
-            return id
+            return id;
         } else {
-            throw new Error("電文の形式が不正です(地震識別番号)")
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EARTHQUAKE_ID);
         }
     }
 
     /** 発表状況の指示 */
     get status(): string {
-        switch (this.fastsub(59, 1)) {
-            case "0":
-                return "通常発表"
-            case "6":
-                return "情報内容の訂正"
-            case "7":
-                return "キャンセルを誤って発表した場合の訂正"
-            case "8":
-                return "訂正事項を盛り込んだ最終の高度利用者向け緊急地震速報"
-            case "9":
-                return "最終の高度利用者向け緊急地震速報"
-            case "/":
-                return "未設定"
-            default:
-                throw new Error("電文の形式が不正です")
+        const statusCode = this.fastsub(59, 1);
+        const status = Definitions.StatusCode[statusCode];
+        if (status === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_STATUS);
+        } else {
+            return status;
         }
     }
 
     /** 最終報 */
-    get final(): boolean {
-        switch (this.fastsub(59, 1)) {
-            case "9":
-                return true
-            case "0": case "6": case "7": case "8": case "/":
-                return false
-            default:
-                throw new Error("電文の形式が不正です")
+    get isFinal(): boolean {
+        const finalFlag = this.fastsub(59, 1);
+        if (finalFlag === "9") {
+            return true;
+        } else if (["0", "6", "7", "8", "/"].includes(finalFlag)) {
+            return false;
+        } else {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_FINAL_FALG);
         }
     }
 
     /** 発表する高度利用者向け緊急地震速報の番号 */
-    get number(): number {
+    get EEWID(): number {
         let number = this.fastsub(60, 2)
         if (!new RegExp(/[^\d]/).test(number)) {
             return parseInt(number)
         } else {
-            throw new Error("電文の形式が不正です(高度利用者向け緊急地震速報の番号)")
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EEW_ID);
         }
     }
 
     /** 震央の名称 */
-    get epicenter(): string {
+    get epicenterName(): string {
         let key = this.fastsub(86, 3)
         if (!new RegExp(/[^\d]/).test(key)) {
-            return EpicenterCode[key]
+            return Definitions.EpicenterCode[key];
         } else if (key == "///") {
-            return null
+            return null;
         } else {
-            throw new Error("電文の形式が不正です(震央の名称)")
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EPICENTER_NAME);
         }
     }
 
-    get position(): string {
+    /**
+     * 震央の位置
+     */
+    get epicenterCoordinate(): string {
         let position = this.fastsub(90, 10)
         if (position == "//// /////") {
             return "不明"
@@ -244,7 +227,7 @@ export default class EEWParser {
             if (!new RegExp(/[^\d|\s|N|E]/).test(position)) {
                 return `${position[0]}${position[1]}${position[2]}.${position[3]}${position[4]}${position[5]}${position[6]}${position[7]}${position[8]}.${position[9]}`
             } else {
-                throw new Error("電文の形式が不正です(震央の位置)")
+                throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EPICENTER_COORDINATE);
             }
         }
     }
@@ -257,7 +240,7 @@ export default class EEWParser {
             if (!new RegExp(/[^\d]/).test(depth)) {
                 return parseInt(depth)
             } else {
-                throw new Error("電文の形式が不正です(震源の深さ)")
+                throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DEPTH);
             }
         }
     }
@@ -265,40 +248,13 @@ export default class EEWParser {
     get magnitude() {
         let magnitude = this.fastsub(105, 2)
         if (magnitude == "//") {
-            return "不明"
+            return "不明";
         } else {
             if (!new RegExp(/[^\d]/).test(magnitude)) {
-                return parseFloat(`${magnitude[0]}.${magnitude[1]}`)
+                return parseFloat(`${magnitude[0]}.${magnitude[1]}`);
             } else {
-                throw new Error("電文の形式が不正です(マグニチュード)")
+                throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE);
             }
-        }
-    }
-
-    toSeismicIntensity(str): string {
-        switch (str) {
-            case "//":
-                return "不明"
-            case "01":
-                return "1"
-            case "02":
-                return "2"
-            case "03":
-                return "3"
-            case "04":
-                return "4"
-            case "5-":
-                return "5弱"
-            case "5+":
-                return "5強"
-            case "6-":
-                return "6弱"
-            case "6+":
-                return "6強"
-            case "07":
-                return "7"
-            default:
-                throw new Error("電文の形式が不正です(震度)")
         }
     }
 
@@ -307,10 +263,12 @@ export default class EEWParser {
      * 震源深度超过 150km 时，将会返回不明。
      */
     get seismicIntensity(): string {
-        try {
-            return this.toSeismicIntensity(this.fastsub(108, 2))
-        } catch (e) {
-            throw new Error("電文の形式が不正です(最大予測震度)")
+        const intensity = this.fastsub(108, 2);
+        const seismicIntensityText = Definitions.SeismicIntensity[intensity];
+        if (seismicIntensityText === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_INTENSITY);
+        } else {
+            return seismicIntensityText;
         }
     }
 
@@ -325,7 +283,7 @@ export default class EEWParser {
             case "4":
                 return "グリッドサーチ法(5点)[気象庁データ]"
             case "5":
-                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究所データ]"
+                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究データ]"
             case "6":
                 return "防災科研システム(5点以上)[防災科学技術研究所データ]"
             case "7":
@@ -394,7 +352,7 @@ export default class EEWParser {
                 throw new Error("電文の形式が不正です(マグニチュードの確からしさ)")
         }
     }
-    
+
     get probabilityOfPositionJMA(): string {
         switch (this.fastsub(116, 1)) {
             case "1":
@@ -507,17 +465,17 @@ export default class EEWParser {
         while (i + 20 < this.getTelegram().length) {
             let local = {}
             local["area_code"] = this.fastsub(i, 3) // 地区代码
-            local["area_name"] = AreaCode[local["area_code"]] // 地区名称
+            local["area_name"] = Definitions.AreaCode[local["area_code"]] // 地区名称
             if (!local["area_name"]) {
                 throw new Error("電文の形式が不正でです(地域名称[EBI])")
             }
             /** 震度 */
             if (this.fastsub(i + 7, 2) == "//") {
-                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 5, 2))}以上`
+                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}以上`
             } else if (this.fastsub(i + 5, 2) == this.fastsub(i + 7, 2)) {
-                local["intensity"] = this.toSeismicIntensity(this.fastsub(i + 5, 2))
+                local["intensity"] = Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]
             } else {
-                local["intensity"] = `${this.toSeismicIntensity(this.fastsub(i + 7, 2))}～${this.toSeismicIntensity(this.fastsub(i + 5, 2))}`
+                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 7, 2)]}～${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}`
             }
             /** 预想到达时间 */
             if (this.fastsub(i + 10, 6) == "//////") {
