@@ -67,14 +67,14 @@ export default class EEWParser {
 震源の深さ(km): ${this.depth}
 マグニチュード: ${this.magnitude}
 最大予測震度: ${this.seismicIntensity}
-震央の確からしさ: ${this.probabilityOfPosition}
-震源の深さの確からしさ: ${this.probabilityOfDepth}
-マグニチュードの確からしさ: ${this.probabilityOfMagnitude}
-震央の確からしさ(気象庁の部内システムでの利用): ${this.probabilityOfPositionJMA}
+震央の確からしさ: ${this.positionProbability}
+震源の深さの確からしさ: ${this.depthProbability}
+マグニチュードの確からしさ: ${this.magnitudeProbability}
+震央の確からしさ(気象庁の部内システムでの利用): ${this.JMAPositionProbability}
 震源の深さの確からしさ(気象庁の部内システムでの利用): ${this.probabilityOfDepthJMA}
 震央位置の海陸判定: ${this.landOrSea}
 警報を含む内容かどうか: ${this.isWarning}
-最大予測震度の変化: ${this.isChanged}
+最大予測震度の変化: ${this.isSeismicIntensityChanged}
 最大予測震度の変化の理由: ${this.reasonOfChange}
 `
             if (this.ebi.length) {
@@ -272,168 +272,135 @@ export default class EEWParser {
         }
     }
 
-    get probabilityOfPosition(): string {
-        switch (this.fastsub(113, 1)) {
-            case "1":
-                return "P波/S波レベル越え、またはテリトリー法(1点)[気象庁データ]"
-            case "2":
-                return "テリトリー法(2点)[気象庁データ]"
-            case "3":
-                return "グリッドサーチ法(3点/4点)[気象庁データ]"
-            case "4":
-                return "グリッドサーチ法(5点)[気象庁データ]"
-            case "5":
-                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究データ]"
-            case "6":
-                return "防災科研システム(5点以上)[防災科学技術研究所データ]"
-            case "7":
-                return "EPOS(海域[観測網外])[気象庁データ]"
-            case "8":
-                return "EPOS(内陸[観測網内])[気象庁データ]"
-            case "9":
-                return "予備"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(震央の確からしさ)")
+    get positionProbability(): string {
+        const positionProbabilityCode = this.fastsub(113, 1);
+        const positionProbability = Definitions.PositionProbabilityCode[positionProbabilityCode];
+        if (positionProbability === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_POSITION_PROBABILITY);
+        } else {
+            return positionProbability;
         }
     }
 
-    get probabilityOfDepth(): string {
-        switch (this.fastsub(114, 1)) {
-            case "1":
-                return "P波/S波レベル越え、またはテリトリー法(1点)[気象庁データ]"
-            case "2":
-                return "テリトリー法(2点)[気象庁データ]"
-            case "3":
-                return "グリッドサーチ法(3点/4点)[気象庁データ]"
-            case "4":
-                return "グリッドサーチ法(5点)[気象庁データ]"
-            case "5":
-                return "防災科研システム(4点以下、または精度情報なし)[防災科学技術研究所データ]"
-            case "6":
-                return "防災科研システム(5点以上)[防災科学技術研究所データ]"
-            case "7":
-                return "EPOS(海域[観測網外])[気象庁データ]"
-            case "8":
-                return "EPOS(内陸[観測網内])[気象庁データ]"
-            case "9":
-                return "予備"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(震源の深さの確からしさ))")
+    get depthProbability(): string {
+        const depthProbabilityCode = this.fastsub(114, 1);
+        const depthProbability = Definitions.DepthProbabilityCode[depthProbabilityCode];
+        if (depthProbability === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DEPTH_PROBABILITY);
+        } else {
+            return depthProbability;
         }
     }
 
-    get probabilityOfMagnitude(): string {
-        switch (this.fastsub(115, 1)) {
-            case "1":
-                return "未設定"
-            case "2":
-                return "防災科研システム[防災科学技術研究所データ]"
-            case "3":
-                return "全点(最大5点)P相[気象庁データ]"
-            case "4":
-                return "P相/全相混在[気象庁データ]"
-            case "5":
-                return "全点(最大5点)全相[気象庁データ]"
-            case "6":
-                return "EPOS[気象庁データ]"
-            case "7":
-                return "未定義"
-            case "8":
-                return "P波/S波レベル越え[気象庁データ]"
-            case "9":
-                return "予備"
-            case "/": case "0":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(マグニチュードの確からしさ)")
+    get magnitudeProbability(): string {
+        const magnitudeProbabilityCode = this.fastsub(115, 1);
+        const magnitudeProbability = Definitions.MagnitudeProbabilityCode[magnitudeProbabilityCode];
+        if (magnitudeProbability === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE_PROBABILITY); 
+        } else {
+            return magnitudeProbability;
         }
     }
 
-    get probabilityOfPositionJMA(): string {
-        switch (this.fastsub(116, 1)) {
-            case "1":
-                return "P波/S波レベル越え又はテリトリー法(1点)[気象庁データ]"
-            case "2":
-                return "テリトリー法(2点)[気象庁データ]"
-            case "3":
-                return "グリッドサーチ法(3点)[気象庁データ]"
-            case "4":
-                return "グリッドサーチ法(4点)[気象庁データ]"
-            case "5":
-                return "グリッドサーチ法(3点)[気象庁データ]"
-            case "6": case "7": case "8": case "9": case "0":
-                return "未使用"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(震央の確からしさ[気象庁の部内システムでの利用])")
-        }
-    }
-    get probabilityOfDepthJMA(): string {
-        switch (this.fastsub(117, 1)) {
-            case "1":
-                return "P波/S波レベル越え又はテリトリー法(1点)[気象庁データ]"
-            case "2":
-                return "テリトリー法(2点)[気象庁データ]"
-            case "3":
-                return "グリッドサーチ法(3点/4点)[気象庁データ]"
-            case "4":
-                return "グリッドサーチ法(5点以上)[気象庁データ]"
-            case "5": case "6": case "7": case "8": case "9": case "0":
-                return "未使用"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(震源の深さの確からしさ[気象庁の部内システムでの利用])")
+    get magnitudeObservePoints(): string {
+        const magnitudeObservePointsCode = this.fastsub(116, 1);
+        const magnitudeObservePoints = Definitions.MagnitudeObservePointsCode[magnitudeObservePointsCode];
+        if (magnitudeObservePoints === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE_OBSERVE_POINTS);
+        } else {
+            return magnitudeObservePoints;
         }
     }
 
+    get JMAPositionProbability(): string {
+        const JMAPositionProbabilityCode = this.fastsub(117, 1);
+        const JMAPositionProbability = Definitions.JMAPositionProbabilityCode[JMAPositionProbabilityCode];
+        if (JMAPositionProbability === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_JMA_POSITION_PROBABILITY);
+        } else {
+            return JMAPositionProbability;
+        }
+    }
+
+
+    /**
+     * Whether the earthquake was happened on land.
+     * 地震是否发生在陆地上
+     */
+    get isLand(): boolean {
+        const landOrSeaFlag = this.fastsub(121, 1);
+        return landOrSeaFlag === "0";
+    }
+
+    /**
+     * Whether the earthquake was happened in sea.
+     * 地震是否发生在海域
+     */
+    get isSea(): boolean {
+        const landOrSeaFlag = this.fastsub(121, 1);
+        return landOrSeaFlag === "1";
+    }
+
+    /**
+     * Earthquake location (Land or sea)
+     * 地震发生之位置(海陆位置)
+     */
     get landOrSea(): string {
-        switch (this.fastsub(121, 1)) {
-            case "0":
-                return "陸域"
-            case "1":
-                return "海域"
-            case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9":
-                return "未設定"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(震央位置の海陸判定)")
+        const landOrSeaFlag = this.fastsub(121, 1);
+        const landOrSea = Definitions.LandOrSeaCode[landOrSeaFlag];
+        if (landOrSea === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_LAND_OR_SEA_FLAG);
+        } else {
+            return landOrSea;
         }
     }
 
+    /**
+     * If this EEW is a 'Warning'
+     * 是否为EEW"警报"
+     */
     get isWarning(): boolean {
-        switch (this.fastsub(122, 1)) {
-            case "0": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": case "/":
-                return false
-            case "1":
-                return true
-            default:
-                throw new Error("電文の形式が不正です(警報の判別)")
+        const warningFlag = this.fastsub(122, 1);
+        return warningFlag === "1";
+    }
+
+    // get estimateMethod(): string {
+    //     const estimateMethodCode = this.fastsub(123, 1);
+
+    // }
+
+    /**
+     * Whether estimate intensity has changed.
+     * 预测震度是否变化
+     */
+    get isSeismicIntensityChanged(): string {
+        const seismicIntensityChangeFlag = this.fastsub(129, 1);
+        const intensityChange = Definitions.SeismicIntensityChangeCode[seismicIntensityChangeFlag];
+        if (intensityChange === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_SEISMIC_INTENSITY_CHANGE_FLAG);
+        } else {
+            return intensityChange;
         }
     }
 
-    get isChanged(): string {
-        switch (this.fastsub(129, 1)) {
-            case "0":
-                return "ほとんど変化無し"
-            case "1":
-                return "最大予測震度が1.0以上大きくなった"
-            case "2":
-                return "最大予測震度が1.0以上小さくなった"
-            case "3": case "4": case "5": case "6": case "7": case "8": case "9":
-                return "未設定"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(最大予測震度の変化)")
-        }
+    /**
+     * Whether the maxinum estimate seismic intensity has increased by 1 or more.
+     * 最大预测震度是否上升1或更多
+     */
+    get isMaximumSeismicIntensityIncreased(): boolean {
+        const maximimSeismicIntensityChangeFlag = this.fastsub(129, 1);
+        return maximimSeismicIntensityChangeFlag === "1";
     }
+
+    /**
+     * Whether the maximum estimate seismic intensity has decreased by 1 or more.
+     * 最大预测震度是否下降1或更多
+     */
+    get isMaxinumSeismicIntensityDecreased(): boolean {
+        const maximimSeismicIntensityChangeFlag = this.fastsub(129, 1);
+        return maximimSeismicIntensityChangeFlag === "2";
+    }
+
 
     get reasonOfChange(): string {
         switch (this.fastsub(130, 1)) {

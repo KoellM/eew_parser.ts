@@ -11,5 +11,12 @@ export default {
     "BAD_DEPTH": "電文の形式が不正です(震源の深さ)",
     "BAD_MAGNITUDE": "電文の形式が不正です(マグニチュード)",
     "BAD_INTENSITY": "電文の形式が不正です(最大予測震度)",
+    "BAD_POSITION_PROBABILITY": "電文の形式が不正です(震央の確からしさ)",
+    "BAD_DEPTH_PROBABILITY": "電文の形式が不正です(震源の深さの確からしさ)",
+    "BAD_MAGNITUDE_PROBABILITY": "電文の形式が不正です(マグニチュードの確からしさ)",
+    "BAD_JMA_POSITION_PROBABILITY": "電文の形式が不正です(震央の確からしさ[気象庁の部内システムでの利用])",
+    "BAD_MAGNITUDE_OBSERVE_POINTS": "電文の形式が不正です(マグニチュード使用観測点)",
+    "BAD_LAND_OR_SEA_FLAG": "電文の形式が不正です(震央位置の海陸判定)",
+    "BAD_SEISMIC_INTENSITY_CHANGE_FLAG": "電文の形式が不正です(最大予測震度の変化)",
     "UNKNOWN_ERROR": ""
 }
