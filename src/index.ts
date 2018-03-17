@@ -1,4 +1,5 @@
 import * as Definitions from './definitions';
+import utils from './utils';
 
 export class TelegramFormatInvalidError extends Error {
     constructor(message: string = Definitions.Errors.UNKNOWN_ERROR) {
@@ -7,25 +8,66 @@ export class TelegramFormatInvalidError extends Error {
     }
 }
 
-/** 
+export class InvalidPropertyError extends Error {
+}
+
+export interface ParsedTelegram {
+    header: string;
+    warning: string;
+    forecast: string;
+}
+
+/**
+ * Warning Only Property Decorator
+ * @returns {(target, propertyKey: string, descriptor: PropertyDescriptor) => void}
+ */
+const warningOnly = () => (target, propertyKey: string, descriptor: PropertyDescriptor) => {
+    const originalGet = descriptor.get;
+    descriptor.get = function () {
+        if (!this.isWarning) {
+            throw new InvalidPropertyError("This property only exists on warning EEWs.")
+        } else {
+            return originalGet.call(this);
+        }
+    }
+};
+/**
  * eew_parser.ts
- * 高度利用者向紧急地震速报解析器 
+ * 高度利用者向紧急地震速报解析器
  * 解析方法来自 eew_parser(https://github.com/mmasaki/eew_parser)
-*/
+ */
 export default class EEWParser {
-    private telegram: string;
+    private rawTelegram: string;
     private language: string;
+    private parsedTelegram: ParsedTelegram = {
+        header: "",
+        warning: "",
+        forecast: "",
+    };
+
     /**
      * @param telegram
-    */
+     * @param language
+     */
     constructor(telegram: string, language: string = 'ja') {
-        this.telegram = telegram;
+        this.rawTelegram = telegram;
         this.language = language;
+        if (this.isWarning) {
+            const warningStartIndex = this.rawTelegram.indexOf('ND');
+            const warningEndIndex = this.rawTelegram.lastIndexOf('ND');
+            this.parsedTelegram.header = this.rawTelegram.slice(0, warningStartIndex - 1);
+            this.parsedTelegram.warning = this.rawTelegram.slice(warningStartIndex, warningEndIndex - 1);
+            this.parsedTelegram.forecast = this.rawTelegram.slice(warningEndIndex, this.rawTelegram.length - 1);
+        } else {
+            const forecastStartIndex = this.rawTelegram.indexOf('ND');
+            this.parsedTelegram.header = this.rawTelegram.slice(0, forecastStartIndex - 1);
+            this.parsedTelegram.forecast = this.rawTelegram.slice(forecastStartIndex, this.rawTelegram.length - 1);
+        }
     }
 
     private fastsub(start: number, num: number = 0): string {
         const numend: number = start + num;
-        return this.telegram.substring(start, numend)
+        return this.rawTelegram.substring(start, numend)
     }
 
     private parseCode(codesheet: (key: string, language: string) => string, key: string): string {
@@ -34,71 +76,18 @@ export default class EEWParser {
 
     /** 返回电文 */
     getTelegram(): string {
-        return this.telegram;
+        return this.rawTelegram;
     }
 
-    /** 返回紧急地震速报内容 */
-    toString(): string {
-        if (this.type == "キャンセル報") {
-            return `
-電文種別: ${this.type}
-発信官署: ${this.forecastOffice}
-訓練等の識別符: ${this.drillType}
-電文の発表時刻: ${this.reportTime}
-電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
-コードが続くかどうか: ${this.isContinue}
-地震発生時刻: ${this.earthquakeTime}
-地震識別番号: ${this.id}
-発表状況の指示: ${this.status}
-発表する高度利用者向け緊急地震速報の番号: ${this.EEWID}`
-        } else {
-            let str = `電文種別: ${this.type}
-発信官署: ${this.forecastOffice}
-訓練等の識別符: ${this.drillType}
-電文の発表時刻: ${this.reportTime}
-電文がこの電文を含め何通あるか: ${this.numberOfTelegram}
-コードが続くかどうか: ${this.isContinue}
-地震発生時刻: ${this.earthquakeTime}
-地震識別番号: ${this.id}
-発表状況の指示: ${this.status}
-発表する高度利用者向け緊急地震速報の番号: ${this.EEWID}
-震央地名: ${this.epicenterName}
-震央の位置: ${this.epicenterCoordinate}
-震源の深さ(km): ${this.depth}
-マグニチュード: ${this.magnitude}
-最大予測震度: ${this.seismicIntensity}
-震央の確からしさ: ${this.positionProbability}
-震源の深さの確からしさ: ${this.depthProbability}
-マグニチュードの確からしさ: ${this.magnitudeProbability}
-震央の確からしさ(気象庁の部内システムでの利用): ${this.JMAPositionProbability}
-震源の深さの確からしさ(気象庁の部内システムでの利用): ${this.probabilityOfDepthJMA}
-震央位置の海陸判定: ${this.landOrSea}
-警報を含む内容かどうか: ${this.isWarning}
-最大予測震度の変化: ${this.isSeismicIntensityChanged}
-最大予測震度の変化の理由: ${this.reasonOfChange}
-`
-            if (this.ebi.length) {
-                str += `
-最大予測震度と主要動到達予測時刻
-`
-                for (let ebi of this.ebi) {
-                    str += `
-地域コード: ${ebi.area_code}
-地域名称: ${ebi.area_name}
-予測震度: ${ebi.intensity}
-予想到達時刻: ${ebi.arrival_time}
-警報を含むかどうか: ${ebi.warning}
-既に到達しているかどうか: ${ebi.arrival}
-            `
-                }
-            }
-            return str
-        }
-    }
+    /**
+     *  ==============
+     *  共通头部属性解析
+     *  ==============
+     */
 
     /** 电文类型 */
     get type(): string {
-        const telegramCode = this.fastsub(0, 2);
+        const telegramCode = utils.fastsub(this.parsedTelegram.header, 0, 2);
         const telegramType = Definitions.TelegramTypeCode[telegramCode];
         if (telegramType === undefined) {
             throw new Error("電文の形式が不正です(電文種別コード)")
@@ -109,7 +98,7 @@ export default class EEWParser {
 
     /** 発信官署 */
     get forecastOffice(): string {
-        const officeCode = this.fastsub(3, 2);
+        const officeCode = utils.fastsub(this.parsedTelegram.header, 3, 2);
         const from = Definitions.ForecastOfficeCode[officeCode];
         if (from === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_FORECAST_OFFICE);
@@ -120,7 +109,7 @@ export default class EEWParser {
 
     /** 訓練等の識別符 */
     get drillType(): string {
-        const drillTypeCode = this.fastsub(6, 2);
+        const drillTypeCode = utils.fastsub(this.parsedTelegram.header, 6, 2);
         const drillType = this.parseCode(Definitions.DrillTypeCode, drillTypeCode);
         if (drillType === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DRILL_TYPE);
@@ -131,24 +120,35 @@ export default class EEWParser {
 
     /** 電文の発表時刻 */
     get reportTime(): Date {
-        let time = `20${this.fastsub(9, 2)}-${this.fastsub(11, 2)}-${this.fastsub(13, 2)}T${this.fastsub(15, 2)}:${this.fastsub(17, 2)}:${this.fastsub(19, 2)}+09:00`
-        let report_time = new Date(time)
-        return report_time
+        let time = `20${
+            utils.fastsub(this.parsedTelegram.header, 9, 2)
+        }-${
+            utils.fastsub(this.parsedTelegram.header, 11, 2)
+        }-${
+            utils.fastsub(this.parsedTelegram.header, 13, 2)
+        }T${
+            utils.fastsub(this.parsedTelegram.header, 15, 2)
+        }:${
+            utils.fastsub(this.parsedTelegram.header, 17, 2)
+        }:${
+            utils.fastsub(this.parsedTelegram.header, 19, 2)
+        }+09:00`;
+        return new Date(time);
     }
 
     /** 電文がこの電文を含め何通あるか */
-    get numberOfTelegram(): number {
-        let number_of_telegram = this.fastsub(23, 1);
+    get partNumber(): number {
+        let number_of_telegram = utils.fastsub(this.parsedTelegram.header, 23, 1);
         return parseInt(number_of_telegram);
     }
 
     /** コードが続くかどうか */
     get isContinue(): boolean {
-        const continueFlag = this.fastsub(24, 1);
+        const continueFlag = utils.fastsub(this.parsedTelegram.header, 24, 1);
         if (continueFlag === "1") {
-            return true;
-        } else if (continueFlag === "0") {
             return false;
+        } else if (continueFlag === "0") {
+            return true;
         } else {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_CONTINUE_FLAG);
         }
@@ -156,15 +156,26 @@ export default class EEWParser {
 
     /** 地震発生時刻もしくは地震検知時刻 */
     get earthquakeTime(): Date {
-        let time = `20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(32, 2)}:${this.fastsub(34, 2)}:${this.fastsub(36, 2)}+09:00`;
-        let earthquakeTime = new Date(time);
-        return earthquakeTime;
+        let time = `20${
+            utils.fastsub(this.parsedTelegram.header, 26, 2)
+        }-${
+            utils.fastsub(this.parsedTelegram.header, 28, 2)
+        }-${
+            utils.fastsub(this.parsedTelegram.header, 30, 2)
+        }T${
+            utils.fastsub(this.parsedTelegram.header, 32, 2)
+        }:${
+            utils.fastsub(this.parsedTelegram.header, 34, 2)
+        }:${
+            utils.fastsub(this.parsedTelegram.header, 36, 2)
+        }+09:00`;
+        return new Date(time);
     }
 
     /** 地震識別番号 */
-    get id(): string {
-        let id = this.fastsub(41, 14)
-        if (!new RegExp(/[^\d]/).test(id)) {
+    get earthquakeId(): string {
+        let id = utils.fastsub(this.parsedTelegram.forecast, 0, 16);
+        if (!new RegExp(/ND[^\d]/).test(id)) {
             return id;
         } else {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EARTHQUAKE_ID);
@@ -173,7 +184,7 @@ export default class EEWParser {
 
     /** 発表状況の指示 */
     get status(): string {
-        const statusCode = this.fastsub(59, 1);
+        const statusCode = utils.fastsub(this.parsedTelegram.forecast, 20, 1);
         const status = Definitions.StatusCode[statusCode];
         if (status === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_STATUS);
@@ -184,7 +195,7 @@ export default class EEWParser {
 
     /** 最終報 */
     get isFinal(): boolean {
-        const finalFlag = this.fastsub(59, 1);
+        const finalFlag = utils.fastsub(this.parsedTelegram.forecast, 20, 1);
         if (finalFlag === "9") {
             return true;
         } else if (["0", "6", "7", "8", "/"].includes(finalFlag)) {
@@ -194,22 +205,26 @@ export default class EEWParser {
         }
     }
 
-    /** 発表する高度利用者向け緊急地震速報の番号 */
-    get EEWID(): number {
-        let number = this.fastsub(60, 2)
-        if (!new RegExp(/[^\d]/).test(number)) {
-            return parseInt(number)
+    /**
+     * Forecast Number
+     * 预报编号
+     * @returns {number}
+     */
+    get forecastNumber(): number {
+        const forecastNumber: string = utils.fastsub(this.parsedTelegram.forecast, 21, 2);
+        if (forecastNumber[0].charCodeAt(0) >= 65) {
+            return (forecastNumber[0].charCodeAt(0) - 55) * 10 + parseInt(forecastNumber[1], 10);
         } else {
-            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EEW_ID);
+            return parseInt(forecastNumber);
         }
     }
 
     /** 震央の名称 */
     get epicenterName(): string {
-        let key = this.fastsub(86, 3)
-        if (!new RegExp(/[^\d]/).test(key)) {
-            return Definitions.EpicenterCode[key];
-        } else if (key == "///") {
+        let epicenterCode = utils.fastsub(this.parsedTelegram.forecast, 47, 3);
+        if (!new RegExp(/[^\d]/).test(epicenterCode)) {
+            return Definitions.EpicenterCode[parseInt(epicenterCode)];
+        } else if (epicenterCode == "///") {
             return null;
         } else {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_EPICENTER_NAME);
@@ -220,7 +235,7 @@ export default class EEWParser {
      * 震央の位置
      */
     get epicenterCoordinate(): string {
-        let position = this.fastsub(90, 10)
+        let position = utils.fastsub(this.parsedTelegram.forecast, 51, 10);
         if (position == "//// /////") {
             return "不明"
         } else {
@@ -232,21 +247,33 @@ export default class EEWParser {
         }
     }
 
-    get depth() {
-        let depth = this.fastsub(101, 3)
+    /**
+     * Depth
+     * 震源深度
+     * 震源の深さ
+     * @returns {any}
+     */
+    get depth(): string | number {
+        let depth = utils.fastsub(this.parsedTelegram.forecast, 62, 3);
         if (depth == "///") {
-            return "不明"
+            return "不明";
         } else {
             if (!new RegExp(/[^\d]/).test(depth)) {
-                return parseInt(depth)
+                return parseInt(depth);
             } else {
                 throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DEPTH);
             }
         }
     }
 
-    get magnitude() {
-        let magnitude = this.fastsub(105, 2)
+    /**
+     * Magnitude
+     * 震级
+     * マグニチュード
+     * @returns {any}
+     */
+    get magnitude(): string | number {
+        let magnitude = utils.fastsub(this.parsedTelegram.forecast, 66, 2)
         if (magnitude == "//") {
             return "不明";
         } else {
@@ -262,8 +289,8 @@ export default class EEWParser {
      * 最大预测震度
      * 震源深度超过 150km 时，将会返回不明。
      */
-    get seismicIntensity(): string {
-        const intensity = this.fastsub(108, 2);
+    get maximumSeismicIntensity(): string {
+        const intensity = utils.fastsub(this.parsedTelegram.forecast, 69, 2);
         const seismicIntensityText = Definitions.SeismicIntensity[intensity];
         if (seismicIntensityText === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_INTENSITY);
@@ -272,8 +299,14 @@ export default class EEWParser {
         }
     }
 
-    get positionProbability(): string {
-        const positionProbabilityCode = this.fastsub(113, 1);
+    /**
+     * Epicenter Position Probability
+     * 震源位置确定度
+     * 震央の確からしさ
+     * @returns {string}
+     */
+    get epicenterPositionProbability(): string {
+        const positionProbabilityCode = utils.fastsub(this.parsedTelegram.forecast, 74, 1);
         const positionProbability = Definitions.PositionProbabilityCode[positionProbabilityCode];
         if (positionProbability === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_POSITION_PROBABILITY);
@@ -282,8 +315,14 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * Depth Probability
+     * 震源深度确定度
+     * 震源の深さの確からしさ
+     * @returns {string}
+     */
     get depthProbability(): string {
-        const depthProbabilityCode = this.fastsub(114, 1);
+        const depthProbabilityCode = utils.fastsub(this.parsedTelegram.forecast, 75, 1);
         const depthProbability = Definitions.DepthProbabilityCode[depthProbabilityCode];
         if (depthProbability === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_DEPTH_PROBABILITY);
@@ -292,18 +331,30 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * Magnitude Probability
+     * 震级确定度
+     * マグニチュードの確からしさ
+     * @returns {string}
+     */
     get magnitudeProbability(): string {
-        const magnitudeProbabilityCode = this.fastsub(115, 1);
+        const magnitudeProbabilityCode = utils.fastsub(this.parsedTelegram.forecast, 76, 1);
         const magnitudeProbability = Definitions.MagnitudeProbabilityCode[magnitudeProbabilityCode];
         if (magnitudeProbability === undefined) {
-            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE_PROBABILITY); 
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE_PROBABILITY);
         } else {
             return magnitudeProbability;
         }
     }
 
+    /**
+     * Magnitude Observe Points
+     * 震级观测点数
+     * マグニチュード使用観測点
+     * @returns {string}
+     */
     get magnitudeObservePoints(): string {
-        const magnitudeObservePointsCode = this.fastsub(116, 1);
+        const magnitudeObservePointsCode = utils.fastsub(this.parsedTelegram.forecast, 77, 1);
         const magnitudeObservePoints = Definitions.MagnitudeObservePointsCode[magnitudeObservePointsCode];
         if (magnitudeObservePoints === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_MAGNITUDE_OBSERVE_POINTS);
@@ -312,11 +363,15 @@ export default class EEWParser {
         }
     }
 
-    get JMAPositionProbability(): string {
-        const JMAPositionProbabilityCode = this.fastsub(117, 1);
-        const JMAPositionProbability = Definitions.JMAPositionProbabilityCode[JMAPositionProbabilityCode];
+    /**
+     * Hypocenter Position Probability
+     * @returns {string}
+     */
+    get hypocenterPositionProbability(): string {
+        const hypocenterPositionProbabilityCode = utils.fastsub(this.parsedTelegram.forecast, 78, 1);
+        const JMAPositionProbability = Definitions.HypocenterPositionProbabilityCode[hypocenterPositionProbabilityCode];
         if (JMAPositionProbability === undefined) {
-            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_JMA_POSITION_PROBABILITY);
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_HYPOCENTER_POSITION_PROBABILITY);
         } else {
             return JMAPositionProbability;
         }
@@ -328,7 +383,7 @@ export default class EEWParser {
      * 地震是否发生在陆地上
      */
     get isLand(): boolean {
-        const landOrSeaFlag = this.fastsub(121, 1);
+        const landOrSeaFlag = utils.fastsub(this.parsedTelegram.forecast, 82, 1);
         return landOrSeaFlag === "0";
     }
 
@@ -337,7 +392,7 @@ export default class EEWParser {
      * 地震是否发生在海域
      */
     get isSea(): boolean {
-        const landOrSeaFlag = this.fastsub(121, 1);
+        const landOrSeaFlag = utils.fastsub(this.parsedTelegram.forecast, 82, 1);
         return landOrSeaFlag === "1";
     }
 
@@ -346,7 +401,7 @@ export default class EEWParser {
      * 地震发生之位置(海陆位置)
      */
     get landOrSea(): string {
-        const landOrSeaFlag = this.fastsub(121, 1);
+        const landOrSeaFlag = utils.fastsub(this.parsedTelegram.forecast, 82, 1);
         const landOrSea = Definitions.LandOrSeaCode[landOrSeaFlag];
         if (landOrSea === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_LAND_OR_SEA_FLAG);
@@ -360,21 +415,32 @@ export default class EEWParser {
      * 是否为EEW"警报"
      */
     get isWarning(): boolean {
-        const warningFlag = this.fastsub(122, 1);
-        return warningFlag === "1";
+        const warningFlag = utils.fastsub(this.rawTelegram, 56, 4);
+        return warningFlag === "NCPN";
     }
 
-    // get estimateMethod(): string {
-    //     const estimateMethodCode = this.fastsub(123, 1);
-
-    // }
+    /**
+     * Forecast Method
+     * 预报方法
+     * 予測手法
+     * @returns {string}
+     */
+    get forecastMethod(): string {
+        const forecastMethodCode = utils.fastsub(this.parsedTelegram.forecast, 84, 1);
+        const forecastMethod = Definitions.ForecastMethodCode[forecastMethodCode];
+        if (forecastMethod === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_FORECAST_METHOD);
+        } else {
+            return forecastMethod;
+        }
+    }
 
     /**
      * Whether estimate intensity has changed.
      * 预测震度是否变化
      */
-    get isSeismicIntensityChanged(): string {
-        const seismicIntensityChangeFlag = this.fastsub(129, 1);
+    get isMaximumSeismicIntensityChanged(): string {
+        const seismicIntensityChangeFlag = utils.fastsub(this.parsedTelegram.forecast, 91, 1);
         const intensityChange = Definitions.SeismicIntensityChangeCode[seismicIntensityChangeFlag];
         if (intensityChange === undefined) {
             throw new TelegramFormatInvalidError(Definitions.Errors.BAD_SEISMIC_INTENSITY_CHANGE_FLAG);
@@ -384,42 +450,36 @@ export default class EEWParser {
     }
 
     /**
-     * Whether the maxinum estimate seismic intensity has increased by 1 or more.
+     * Whether the maximum estimate seismic intensity has increased by 1 or more.
      * 最大预测震度是否上升1或更多
      */
     get isMaximumSeismicIntensityIncreased(): boolean {
-        const maximimSeismicIntensityChangeFlag = this.fastsub(129, 1);
-        return maximimSeismicIntensityChangeFlag === "1";
+        const maximumSeismicIntensityChangeFlag = utils.fastsub(this.parsedTelegram.forecast, 91, 1);
+        return maximumSeismicIntensityChangeFlag === "1";
     }
 
     /**
      * Whether the maximum estimate seismic intensity has decreased by 1 or more.
      * 最大预测震度是否下降1或更多
      */
-    get isMaxinumSeismicIntensityDecreased(): boolean {
-        const maximimSeismicIntensityChangeFlag = this.fastsub(129, 1);
-        return maximimSeismicIntensityChangeFlag === "2";
+    get isMaximumSeismicIntensityDecreased(): boolean {
+        const maximumSeismicIntensityChangeFlag = utils.fastsub(this.parsedTelegram.forecast, 91, 1);
+        return maximumSeismicIntensityChangeFlag === "2";
     }
 
-
-    get reasonOfChange(): string {
-        switch (this.fastsub(130, 1)) {
-            case "0":
-                return "変化無し"
-            case "1":
-                return "主としてMが変化したため(1.0以上)"
-            case "2":
-                return "主として震源位置が変化したため(10.0km以上)"
-            case "3":
-                return "M及び震源位置が変化したため"
-            case "4":
-                return "震源の深さが変化したため"
-            case "5": case "6": case "7": case "8": case "9":
-                return "未設定"
-            case "/":
-                return "不明/未設定"
-            default:
-                throw new Error("電文の形式が不正です(最大予測震度の変化の理由)")
+    /**
+     * Seismic Intensity Change Reason
+     * 最大预测震度变化理由
+     * 最大予測震度の変化の理由
+     * @returns {string}
+     */
+    get maximumSeismicIntensityChangeReason(): string {
+        const seismicIntensityChangeReasonCode = utils.fastsub(this.parsedTelegram.forecast, 91, 1);
+        const seismicIntensityChangeReason = Definitions.SeismicIntensityChangeReasonCode[seismicIntensityChangeReasonCode];
+        if (seismicIntensityChangeReason === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_SEISMIC_INTENSITY_CHANGE_REASON);
+        } else {
+            return seismicIntensityChangeReason;
         }
     }
 
@@ -458,7 +518,15 @@ export default class EEWParser {
                 case "1":
                     local["warning"] = true
                     break;
-                case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": case "/":
+                case "2":
+                case "3":
+                case "4":
+                case "5":
+                case "6":
+                case "7":
+                case "8":
+                case "9":
+                case "/":
                     local["warning"] = null
                     break;
                 default:
@@ -473,7 +541,15 @@ export default class EEWParser {
                 case "1":
                     local["arrival"] = true
                     break;
-                case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": case "/":
+                case "2":
+                case "3":
+                case "4":
+                case "5":
+                case "6":
+                case "7":
+                case "8":
+                case "9":
+                case "/":
                     local["arrival"] = null
                     break;
                 default:
@@ -483,5 +559,15 @@ export default class EEWParser {
             i += 20
         }
         return data
+    }
+
+    /**
+     * ====================
+     *      警报属性解析
+     * ====================
+     */
+    @warningOnly()
+    get warningNumber(): string {
+        return utils.fastsub(this.parsedTelegram.warning, 21, 2);
     }
 }
