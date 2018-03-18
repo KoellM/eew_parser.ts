@@ -15,4 +15,9 @@ export { default as SeismicIntensityChangeCode } from './SeismicIntensityChangeC
 export { default as ForecastMethodCode } from './ForecastMethodCode';
 export { default as SeismicIntensityChangeReasonCode } from './SeismicIntensityChangeReasonCode';
 export { default as EBICode } from './EBICode';
+export { default as WarningEpicenterCode } from './WarningEpicenterCode';
+export { default as AdditionReason } from './AdditionReason';
+export { default as WarningForecastMethodCode } from './WarningForecastMethodCode';
+export { default as RegionCode } from './RegionCode';
+export { default as PrefectureCode } from './PrefectureCode';
 export { default as Errors } from './Errors';

@@ -65,18 +65,8 @@ export default class EEWParser {
         }
     }
 
-    private fastsub(start: number, num: number = 0): string {
-        const numend: number = start + num;
-        return this.rawTelegram.substring(start, numend)
-    }
-
     private parseCode(codesheet: (key: string, language: string) => string, key: string): string {
         return codesheet(key, this.language);
-    }
-
-    /** 返回电文 */
-    getTelegram(): string {
-        return this.rawTelegram;
     }
 
     /**
@@ -94,6 +84,10 @@ export default class EEWParser {
         } else {
             return telegramType;
         }
+    }
+
+    get isCancel(): boolean {
+        return this.type === "キャンセル報";
     }
 
     /** 発信官署 */
@@ -531,7 +525,167 @@ export default class EEWParser {
      * ====================
      */
     @warningOnly()
-    get warningNumber(): string {
-        return utils.fastsub(this.parsedTelegram.warning, 21, 2);
+    get warningNumber(): number {
+        const warningNumber = utils.fastsub(this.parsedTelegram.warning, 21, 2)
+        if (warningNumber[0].charCodeAt(0) >= 65) {
+            return (warningNumber[0].charCodeAt(0) - 55) * 10 + parseInt(warningNumber[1], 10);
+        } else {
+            return parseInt(warningNumber);
+        }
+    }
+
+    /**
+     * Warning Epicenter
+     * 警报 震央
+     * @returns {string}
+     */
+    @warningOnly()
+    get warningEpicenter(): string {
+        const warningEpicenterCode = utils.fastsub(this.parsedTelegram.warning, 24, 4);
+        const warningEpicenter = Definitions.WarningEpicenterCode[warningEpicenterCode];
+        if (warningEpicenter === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_WARNING_EPICENTER);
+        } else {
+            return warningEpicenter;
+        }
+    }
+
+    // Region: 地方 Prefecture: 都道府県 Area: 地域
+
+    @warningOnly()
+    get hasAdditionalWarningRegion(): boolean {
+        return utils.fastsub(this.parsedTelegram.warning, 47, 1) === "1";
+    }
+
+    @warningOnly()
+    get hasAdditionalWarningPrefecture(): boolean {
+        return utils.fastsub(this.parsedTelegram.warning, 48, 1) === "1";
+    }
+
+    @warningOnly()
+    get hasAdditionalWarningArea(): boolean {
+        return utils.fastsub(this.parsedTelegram.warning, 49, 1) === "1";
+    }
+
+    /**
+     * Reason of the addition of warning region/prefecture/area.
+     * 強い揺れが推定される地域の追加の理由
+     * @returns {string}
+     */
+    @warningOnly()
+    get additionReason(): string {
+        const additionReasonCode = utils.fastsub(this.parsedTelegram.warning, 50, 1);
+        const additionReason = Definitions.AdditionReason[additionReasonCode];
+        if (additionReason === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_ADDITION_REASON);
+        } else {
+            return additionReason;
+        }
+    }
+
+    /**
+     * Forecast method of warning areas
+     * 警报区域预报方法
+     * @returns {string}
+     */
+    @warningOnly()
+    get warningForecastMethod(): string {
+        const warningForecastMethodCode = utils.fastsub(this.parsedTelegram.warning, 51, 1);
+        const warningForecastMethod = Definitions.WarningForecastMethodCode[warningForecastMethodCode];
+        if (warningForecastMethod === undefined) {
+            throw new TelegramFormatInvalidError(Definitions.Errors.BAD_WARNING_FORECAST_METHOD);
+        } else {
+            return warningForecastMethod;
+        }
+    }
+
+    @warningOnly()
+    get additionalWarningRegion() {
+        const startIndex = this.parsedTelegram.warning.indexOf('CAI') + 4;
+        const endIndex = this.parsedTelegram.warning.indexOf('CPI') - 1;
+        const CAIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const regionCode of CAIPart.split(/\s+/)) {
+            if (regionCode === "0000" || regionCode === "////") {
+                break;
+            }
+            result.push(Definitions.RegionCode[regionCode]);
+        }
+        return result;
+    }
+
+    @warningOnly()
+    get additionalWarningPrefecture() {
+        const startIndex = this.parsedTelegram.warning.indexOf('CPI') + 4;
+        const endIndex = this.parsedTelegram.warning.indexOf('CBI') - 1;
+        const CPIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const prefectureCode of CPIPart.split(/\s+/)) {
+            if (prefectureCode === "0000" || prefectureCode === "////") {
+                break;
+            }
+            result.push(Definitions.PrefectureCode[prefectureCode]);
+        }
+        return result;
+    }
+
+    @warningOnly()
+    get additionalWarningArea() {
+        const startIndex = this.parsedTelegram.warning.indexOf('CBI') + 4;
+        const endIndex = this.parsedTelegram.warning.indexOf('PAI') - 1;
+        const CBIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const areaCode of CBIPart.split(/\s+/)) {
+            if (areaCode === "000" || areaCode === "///") {
+                break;
+            }
+            result.push(Definitions.AreaCode[areaCode]);
+        }
+        return result;
+    }
+
+    @warningOnly()
+    get warningRegion() {
+        const startIndex = this.parsedTelegram.warning.indexOf('PAI') + 4;
+        const endIndex = this.parsedTelegram.warning.indexOf('PPI') - 1;
+        const PAIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const regionCode of PAIPart.split(/\s+/)) {
+            if (regionCode === "0000" || regionCode === "////") {
+                break;
+            }
+            result.push(Definitions.RegionCode[regionCode]);
+        }
+        return result;
+    }
+
+    @warningOnly()
+    get warningPrefecture() {
+        const startIndex = this.parsedTelegram.warning.indexOf('PPI') + 4;
+        const endIndex = this.parsedTelegram.warning.indexOf('PBI') - 1;
+        const PPIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const prefectureCode of PPIPart.split(/\s+/)) {
+            if (prefectureCode === "0000" || prefectureCode === "////") {
+                break;
+            }
+            result.push(Definitions.PrefectureCode[prefectureCode]);
+        }
+        return result;
+    }
+
+    @warningOnly()
+    get warningArea() {
+        const startIndex = this.parsedTelegram.warning.indexOf('PBI') + 4;
+        const endIndex = this.parsedTelegram.warning.lastIndexOf('NCP') - 1;
+        const PBIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
+        const result = [];
+        for (const areaCode of PBIPart.split(/\s+/)) {
+            if (areaCode === "000" || areaCode === "///") {
+                break;
+            }
+            result.push(Definitions.AreaCode[areaCode]);
+        }
+        return result;
     }
 }

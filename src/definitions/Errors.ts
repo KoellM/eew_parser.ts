@@ -20,5 +20,8 @@ export default {
     "BAD_SEISMIC_INTENSITY_CHANGE_FLAG": "電文の形式が不正です(最大予測震度の変化)",
     "BAD_FORECAST_METHOD": "電文の形式が不正です(予測手法)",
     "BAD_SEISMIC_INTENSITY_CHANGE_REASON": "電文の形式が不正です(最大予測震度の変化の理由)",
+    "BAD_WARNING_EPICENTER": "電文の形式が不正です(震央地名コード)",
+    "BAD_ADDITION_REASON": "電文の形式が不正です(強い揺れが推定される地域の追加加の理由)",
+    "BAD_WARNING_FORECAST_METHOD": "電文の形式が不正です(強い揺れが推定される地域予測手法)",
     "UNKNOWN_ERROR": ""
 }

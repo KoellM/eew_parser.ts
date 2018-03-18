@@ -165,7 +165,46 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
 
 describe('Parsing Warning EEW', () => {
    const EEW = new EEWParser(exampleWarningEEW);
-    it('Warning Number', () => {
-        expect(EEW.warningNumber).eq('01');
-    })
+    it('Warning Number / 警报编号', () => {
+        expect(EEW.warningNumber).eq(1);
+    });
+    it('Warning Epicenter / 震央(震央)', () => {
+        expect(EEW.warningEpicenter).to.equal('三重南東沖');
+    });
+    it('Warning Area Addition Reason / 追加警报区域的理由', () => {
+        expect(EEW.additionReason).to.equal('なし');
+    });
+    it('Warning Forecast Method / 警报预报方法', () => {
+        expect(EEW.warningForecastMethod).to.equal('未設定時、キャンセル時');
+    });
+    it('Addition Warning Region / 追加警报地区', () => {
+        expect(EEW.additionalWarningRegion).to.deep.equal([]);
+    });
+    it('Addition Warning Prefecture / 追加警报都道府県', () => {
+        expect(EEW.additionalWarningPrefecture).to.deep.equal([]);
+    });
+    it('Addition Warning Area / 追加警报地域', () => {
+        expect(EEW.additionalWarningPrefecture).to.deep.equal([]);
+    });
+    it('Warning Region / 警报地区', () => {
+        expect(EEW.warningRegion).to.deep.equal([ '東海', '近畿', '北陸', '四国', '中国' ]);
+    });
+    it('Warning Prefecture / 警报都道府県', () => {
+        expect(EEW.warningPrefecture).to.deep.equal(["三重","和歌山","福井","岐阜","静岡","愛知","滋賀","京都","大阪","兵庫","奈良","徳島","香川","高知","岡山"]);
+    });
+    it('Warning Area / 警报地域', () => {
+        expect(EEW.warningArea).to.deep.equal(["三重県南部","和歌山県南部","和歌山県北部","三重県中部","福井県嶺北","福井県嶺南","岐阜県美濃中西部","静岡県中部","静岡県西部","愛知県東部","愛知県西部","三重県北部","滋賀県北部","滋賀県南部","京都府北部","京都府南部","大阪府北部","大阪府南部","兵庫県南東部","兵庫県南西部","兵庫県淡路島","奈良県","徳島県北部","徳島県南部","香川県東部","高知県東部","高知県中部","岡山県南部","香川県西部"]);
+    });
+    // it('Stringify', () => {
+    //     console.log('警报地方:');
+    //     console.log(EEW.warningRegion.join(' '));
+    //     console.log('警报都道府県:');
+    //     console.log(EEW.warningPrefecture.join(' '));
+    //     console.log('警报地域:');
+    //     console.log(EEW.warningArea.join(' '));
+    //     console.log('预报:');
+    //     for (const i of EEW.ebi) {
+    //         console.log(`${i.areaName}\n到达时间:${i.arrivalTime}  预计震度: ${i.seismicIntensity.min}~${i.seismicIntensity.max}   ${i.arrival}/${i.type}`)
+    //     }
+    // })
 });
