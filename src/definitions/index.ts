@@ -14,4 +14,5 @@ export { default as LandOrSeaCode } from './LandOrSeaCode';
 export { default as SeismicIntensityChangeCode } from './SeismicIntensityChangeCode';
 export { default as ForecastMethodCode } from './ForecastMethodCode';
 export { default as SeismicIntensityChangeReasonCode } from './SeismicIntensityChangeReasonCode';
+export { default as EBICode } from './EBICode';
 export { default as Errors } from './Errors';

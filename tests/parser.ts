@@ -31,10 +31,12 @@ EBI 462 S6-5+ 150030 10 551 S6-5+ 150030 10 550 S5+5- 150035 10
 611 S0403 150100 10 631 S0403 150100 10
 9999=`;
 
-const exampleEEW = `35 03 00 020117093014 C11
+const exampleEEW = `36 03 00 020117093016 C11
 020117093010
-ND20020117093012 NCN001 JD////////////// JN///
-016 N343 E1384 010 // 5- RK118// RT00000 RC/////
+ND20020117093012 NCN002 JD20020117093012 JN001
+486 N343 E1384 010 55 5- RK224// RT01000 RC00000
+EBI 440 S6-// 093022 10 442 S6-// 093022 10 443 S6-// 093030 10 441
+S6-// 093036 10
 9999=`;
 
 describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
@@ -55,7 +57,7 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
         });
 
         it('Telegram Type / 电文类型', () =>{
-            expect(EEW.type).to.equal('最大予測震度のみの高度利用者向け緊急地震速報');
+            expect(EEW.type).to.equal('マグニチュード、最大予測震度及び主要動到達予測時刻の高度利用者向け緊急地震速報(B-Δ法、テリトリ法)');
         });
 
         it('Forecast Office / 发信官署', () => {
@@ -63,7 +65,7 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
         });
 
         it('Report Time / 发信时间', () => {
-            expect(EEW.reportTime.toISOString()).to.equal('2002-01-17T00:30:14.000Z');
+            expect(EEW.reportTime.toISOString()).to.equal('2002-01-17T00:30:16.000Z');
         });
 
         it('Part Number of Telegram / 长电文分部编号', () => {
@@ -88,10 +90,10 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
             expect(EEW.isFinal).to.equal(false);
         });
         it('Forecast Number / 预报编号', () => {
-            expect(EEW.forecastNumber).to.equal(1);
+            expect(EEW.forecastNumber).to.equal(2);
         });
         it('Epicenter Name / 震源地名', () => {
-            expect(EEW.epicenterName).to.equal('東海地方');
+            expect(EEW.epicenterName).to.equal('駿河湾南方沖');
         });
         it('Epicenter Coordinate / 震源坐标', () => {
             expect(EEW.epicenterCoordinate).to.equal('N34.3 E138.4');
@@ -100,19 +102,19 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
             expect(EEW.depth).to.equal(10);
         });
         it('Magnitude / 震级', () => {
-            expect(EEW.magnitude).to.equals('不明');
+            expect(EEW.magnitude).to.equals(5.5);
         });
         it('Maximum Seismic Intensity / 最大预测震度', () => {
             expect(EEW.maximumSeismicIntensity).to.equal('5弱');
         });
         it('Epicenter Position Probability / 震央位置确定度', () => {
-            expect(EEW.epicenterPositionProbability).to.equal('P波/S波レベル超え、IPF法(1点)、または仮定震源要素[気象庁データ]');
+            expect(EEW.epicenterPositionProbability).to.equal('IPF法(2点)[気象庁データ]');
         });
         it('Depth Probability / 震源深度确定度', () => {
-            expect(EEW.depthProbability).to.equal('P波/S波レベル超え、IPF法(1点)、または仮定震源要素[気象庁データ]');
+            expect(EEW.depthProbability).to.equal('IPF法(2点)[気象庁データ]');
         });
         it('Magnitude Probability / 震级确定度', () => {
-            expect(EEW.magnitudeProbability).to.equal('P波/S波レベル超え、または仮定震源要素[気象庁データ]');
+            expect(EEW.magnitudeProbability).to.equal('P相/全相混在[気象庁データ]');
         });
         it('Magnitude Observe Points / 震级观测点数', () => {
             expect(EEW.magnitudeObservePoints).to.equal('不明')
@@ -129,12 +131,34 @@ describe('Parsing Non-Wanrning EEW / 非警报 EEW 解析', () => {
             expect(EEW.forecastMethod).to.equal('未設定');
         });
         it('Maximum Seismic Intensity Change Flag / 最大预测震度变化标记', () => {
-            expect(EEW.isMaximumSeismicIntensityChanged).to.equal('不明');
+            expect(EEW.isMaximumSeismicIntensityChanged).to.equal('ほとんど変化無し');
             expect(EEW.isMaximumSeismicIntensityIncreased).to.equal(false);
             expect(EEW.isMaximumSeismicIntensityDecreased).to.equal(false);
         });
         it('Maximum Seismic Intensity Change Reason / 最大预测震度变化理由', () => {
-            expect(EEW.maximumSeismicIntensityChangeReason).to.equal('不明、未設定時、キャンセル時');
+            expect(EEW.maximumSeismicIntensityChangeReason).to.equal('変化なし');
+        });
+        describe('Estimate Seismic Intensity Information By Region / 最大震度预测(地区)', () => {
+            const EBIData = EEW.ebi;
+            expect(EBIData.length).to.equal(4);
+            it('Estimate Seismic Intensity Area Name / 最大预测震度(地区) - 地区名', () => {
+                expect(EBIData[0].areaName).to.equal('静岡県伊豆');
+            });
+            it('Estimate Seismic Intensity / 最大预测震度(地区) - 预测震度', () => {
+                expect(EBIData[1].seismicIntensity.min).to.equal('6弱');
+                expect(EBIData[1].seismicIntensity.max).to.equal('不明');
+            });
+            it('Estimate Seismic Intensity Information Type / 最大预测震度(地区) - 报文类型', () => {
+                expect(EBIData[2].type).to.equal('警報');
+            });
+            it('Estimate Seismic Intensity Information Arrival Status / 最大预测震度(地区) - 到达状况', () => {
+                expect(EBIData[3].arrival).to.equal('未到達');
+            });
+
+            it('Estimate Seismic Intensity Information Arrival Time / 最大预测震度(地区) - 到达时间', () => {
+                expect(EBIData[0].arrivalTime.toISOString()).to.equal('2002-01-17T01:30:22.000Z');
+            })
+
         })
     });
 });

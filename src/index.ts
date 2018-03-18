@@ -484,81 +484,45 @@ export default class EEWParser {
     }
 
     get ebi() {
-        let data = []
-        if (this.fastsub(135, 3) != "EBI") {
-            return data
+        const result = [];
+        if (this.parsedTelegram.forecast.indexOf('EBI') === -1) {
+            return result;
         }
-        let i = 139
-        while (i + 20 < this.getTelegram().length) {
-            let local = {}
-            local["area_code"] = this.fastsub(i, 3) // 地区代码
-            local["area_name"] = Definitions.AreaCode[local["area_code"]] // 地区名称
-            if (!local["area_name"]) {
-                throw new Error("電文の形式が不正でです(地域名称[EBI])")
-            }
-            /** 震度 */
-            if (this.fastsub(i + 7, 2) == "//") {
-                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}以上`
-            } else if (this.fastsub(i + 5, 2) == this.fastsub(i + 7, 2)) {
-                local["intensity"] = Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]
-            } else {
-                local["intensity"] = `${Definitions.SeismicIntensity[this.fastsub(i + 7, 2)]}～${Definitions.SeismicIntensity[this.fastsub(i + 5, 2)]}`
-            }
-            /** 预想到达时间 */
-            if (this.fastsub(i + 10, 6) == "//////") {
-                local["arrival_time"] = null
-            } else {
-                local['arrival_time'] = new Date(`20${this.fastsub(26, 2)}-${this.fastsub(28, 2)}-${this.fastsub(30, 2)}T${this.fastsub(i + 10, 2)}:${this.fastsub(i + 12, 2)}:${this.fastsub(i + 14, 2)}+09:00`)
-            }
-            /** 是否为警报地区 */
-            switch (this.fastsub(i + 17, 1)) {
-                case "0":
-                    local["warning"] = false
-                    break;
-                case "1":
-                    local["warning"] = true
-                    break;
-                case "2":
-                case "3":
-                case "4":
-                case "5":
-                case "6":
-                case "7":
-                case "8":
-                case "9":
-                case "/":
-                    local["warning"] = null
-                    break;
-                default:
-                    throw new Error("電文の形式が不正でです(警報の判別[EBI])")
+        const startIndex = this.parsedTelegram.forecast.indexOf('EBI') + 4;
+        const ebiPart = this.parsedTelegram.forecast.slice(startIndex);
+        let nowIndex = 0;
+        while(nowIndex < ebiPart.length - 4) {
+            const areaName = Definitions.AreaCode[utils.fastsub(ebiPart, nowIndex, 3)];
+            const minimumSeismicIntensity = Definitions.SeismicIntensity[utils.fastsub(ebiPart, nowIndex + 5, 2)];
+            const maximumSeismicIntensity = Definitions.SeismicIntensity[utils.fastsub(ebiPart, nowIndex + 7, 2)];
+            const baseTime = this.earthquakeTime;
+            let arrivalTime = undefined;
+            if (utils.fastsub(ebiPart, nowIndex + 10, 6) !== "//////") {
+                baseTime.setHours(parseInt(utils.fastsub(ebiPart, nowIndex + 10, 2)));
+                baseTime.setMinutes(parseInt(utils.fastsub(ebiPart, nowIndex + 12, 2)));
+                baseTime.setSeconds(parseInt(utils.fastsub(ebiPart, nowIndex + 14, 2)));
+                arrivalTime = baseTime;
             }
 
-            /** 是否到达 */
-            switch (this.fastsub(i + 18, 1)) {
-                case "0":
-                    local["arrival"] = false
-                    break;
-                case "1":
-                    local["arrival"] = true
-                    break;
-                case "2":
-                case "3":
-                case "4":
-                case "5":
-                case "6":
-                case "7":
-                case "8":
-                case "9":
-                case "/":
-                    local["arrival"] = null
-                    break;
-                default:
-                    throw new Error("電文の形式が不正でです(主要動の到達予測状況[EBI])")
-            }
-            data.push(local)
-            i += 20
+            const typeCode = utils.fastsub(ebiPart, nowIndex + 17, 1);
+            const arrivalCode = utils.fastsub(ebiPart, nowIndex + 18, 1);
+            const type = Definitions.EBICode.TypeCode[typeCode];
+            const arrival = Definitions.EBICode.ArrivalCode[arrivalCode];
+
+            result.push({
+                areaName,
+                seismicIntensity: {
+                    min: minimumSeismicIntensity,
+                    max: maximumSeismicIntensity
+                },
+                arrivalTime,
+                type,
+                arrival
+            });
+
+            nowIndex += 20;
         }
-        return data
+        return result;
     }
 
     /**
