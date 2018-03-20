@@ -46,8 +46,8 @@ export default class EEWParser {
     };
 
     /**
-     * @param telegram
-     * @param language
+     * @param telegram 电文
+     * @param language 语言
      */
     constructor(telegram: string, language: string = 'ja') {
         this.rawTelegram = telegram;
@@ -75,7 +75,9 @@ export default class EEWParser {
      *  ==============
      */
 
-    /** 电文类型 */
+    /**
+     * 电文类型
+     */
     get type(): string {
         const telegramCode = utils.fastsub(this.parsedTelegram.header, 0, 2);
         const telegramType = Definitions.TelegramTypeCode[telegramCode];
@@ -86,11 +88,16 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * 电文是否为取消报
+     */
     get isCancel(): boolean {
         return this.type === "キャンセル報";
     }
 
-    /** 発信官署 */
+    /**
+     * 电文发信官署
+     */
     get forecastOffice(): string {
         const officeCode = utils.fastsub(this.parsedTelegram.header, 3, 2);
         const from = Definitions.ForecastOfficeCode[officeCode];
@@ -101,7 +108,9 @@ export default class EEWParser {
         }
     }
 
-    /** 訓練等の識別符 */
+    /**
+     * 训练识别符
+     */
     get drillType(): string {
         const drillTypeCode = utils.fastsub(this.parsedTelegram.header, 6, 2);
         const drillType = this.parseCode(Definitions.DrillTypeCode, drillTypeCode);
@@ -112,31 +121,37 @@ export default class EEWParser {
         }
     }
 
-    /** 電文の発表時刻 */
+    /**
+     * 电文发表时间
+     */
     get reportTime(): Date {
         let time = `20${
             utils.fastsub(this.parsedTelegram.header, 9, 2)
-        }-${
+            }-${
             utils.fastsub(this.parsedTelegram.header, 11, 2)
-        }-${
+            }-${
             utils.fastsub(this.parsedTelegram.header, 13, 2)
-        }T${
+            }T${
             utils.fastsub(this.parsedTelegram.header, 15, 2)
-        }:${
+            }:${
             utils.fastsub(this.parsedTelegram.header, 17, 2)
-        }:${
+            }:${
             utils.fastsub(this.parsedTelegram.header, 19, 2)
-        }+09:00`;
+            }+09:00`;
         return new Date(time);
     }
 
-    /** 電文がこの電文を含め何通あるか */
+    /**
+     * 该条电文是总体电文的第几部分
+     */
     get partNumber(): number {
         let number_of_telegram = utils.fastsub(this.parsedTelegram.header, 23, 1);
         return parseInt(number_of_telegram);
     }
 
-    /** コードが続くかどうか */
+    /**
+     * 是否有后续电文部分
+     */
     get isContinue(): boolean {
         const continueFlag = utils.fastsub(this.parsedTelegram.header, 24, 1);
         if (continueFlag === "1") {
@@ -148,25 +163,29 @@ export default class EEWParser {
         }
     }
 
-    /** 地震発生時刻もしくは地震検知時刻 */
+    /** 
+     * 检测到地震的时间
+     */
     get earthquakeTime(): Date {
         let time = `20${
             utils.fastsub(this.parsedTelegram.header, 26, 2)
-        }-${
+            }-${
             utils.fastsub(this.parsedTelegram.header, 28, 2)
-        }-${
+            }-${
             utils.fastsub(this.parsedTelegram.header, 30, 2)
-        }T${
+            }T${
             utils.fastsub(this.parsedTelegram.header, 32, 2)
-        }:${
+            }:${
             utils.fastsub(this.parsedTelegram.header, 34, 2)
-        }:${
+            }:${
             utils.fastsub(this.parsedTelegram.header, 36, 2)
-        }+09:00`;
+            }+09:00`;
         return new Date(time);
     }
 
-    /** 地震識別番号 */
+    /** 
+     * 地震识别编号
+     */
     get earthquakeId(): string {
         let id = utils.fastsub(this.parsedTelegram.forecast, 0, 16);
         if (!new RegExp(/ND[^\d]/).test(id)) {
@@ -176,7 +195,9 @@ export default class EEWParser {
         }
     }
 
-    /** 発表状況の指示 */
+    /** 
+     * 发表情况
+     */
     get status(): string {
         const statusCode = utils.fastsub(this.parsedTelegram.forecast, 20, 1);
         const status = Definitions.StatusCode[statusCode];
@@ -187,7 +208,9 @@ export default class EEWParser {
         }
     }
 
-    /** 最終報 */
+    /** 
+     * 是否为最终报
+     */
     get isFinal(): boolean {
         const finalFlag = utils.fastsub(this.parsedTelegram.forecast, 20, 1);
         if (finalFlag === "9") {
@@ -213,7 +236,9 @@ export default class EEWParser {
         }
     }
 
-    /** 震央の名称 */
+    /** 
+     * 震央名称
+     */
     get epicenterName(): string {
         let epicenterCode = utils.fastsub(this.parsedTelegram.forecast, 47, 3);
         if (!new RegExp(/[^\d]/).test(epicenterCode)) {
@@ -226,7 +251,7 @@ export default class EEWParser {
     }
 
     /**
-     * 震央の位置
+     * 震央坐标
      */
     get epicenterCoordinate(): string {
         let position = utils.fastsub(this.parsedTelegram.forecast, 51, 10);
@@ -242,10 +267,8 @@ export default class EEWParser {
     }
 
     /**
-     * Depth
      * 震源深度
-     * 震源の深さ
-     * @returns {any}
+     * @returns {string | number}
      */
     get depth(): string | number {
         let depth = utils.fastsub(this.parsedTelegram.forecast, 62, 3);
@@ -261,10 +284,8 @@ export default class EEWParser {
     }
 
     /**
-     * Magnitude
      * 震级
-     * マグニチュード
-     * @returns {any}
+     * @returns {string | number}
      */
     get magnitude(): string | number {
         let magnitude = utils.fastsub(this.parsedTelegram.forecast, 66, 2)
@@ -294,9 +315,7 @@ export default class EEWParser {
     }
 
     /**
-     * Epicenter Position Probability
      * 震源位置确定度
-     * 震央の確からしさ
      * @returns {string}
      */
     get epicenterPositionProbability(): string {
@@ -310,9 +329,7 @@ export default class EEWParser {
     }
 
     /**
-     * Depth Probability
      * 震源深度确定度
-     * 震源の深さの確からしさ
      * @returns {string}
      */
     get depthProbability(): string {
@@ -326,9 +343,7 @@ export default class EEWParser {
     }
 
     /**
-     * Magnitude Probability
      * 震级确定度
-     * マグニチュードの確からしさ
      * @returns {string}
      */
     get magnitudeProbability(): string {
@@ -342,9 +357,7 @@ export default class EEWParser {
     }
 
     /**
-     * Magnitude Observe Points
      * 震级观测点数
-     * マグニチュード使用観測点
      * @returns {string}
      */
     get magnitudeObservePoints(): string {
@@ -358,7 +371,7 @@ export default class EEWParser {
     }
 
     /**
-     * Hypocenter Position Probability
+     * 震源位置确定度
      * @returns {string}
      */
     get hypocenterPositionProbability(): string {
@@ -373,7 +386,6 @@ export default class EEWParser {
 
 
     /**
-     * Whether the earthquake was happened on land.
      * 地震是否发生在陆地上
      */
     get isLand(): boolean {
@@ -382,7 +394,6 @@ export default class EEWParser {
     }
 
     /**
-     * Whether the earthquake was happened in sea.
      * 地震是否发生在海域
      */
     get isSea(): boolean {
@@ -391,7 +402,6 @@ export default class EEWParser {
     }
 
     /**
-     * Earthquake location (Land or sea)
      * 地震发生之位置(海陆位置)
      */
     get landOrSea(): string {
@@ -405,7 +415,6 @@ export default class EEWParser {
     }
 
     /**
-     * If this EEW is a 'Warning'
      * 是否为EEW"警报"
      */
     get isWarning(): boolean {
@@ -414,9 +423,7 @@ export default class EEWParser {
     }
 
     /**
-     * Forecast Method
      * 预报方法
-     * 予測手法
      * @returns {string}
      */
     get forecastMethod(): string {
@@ -430,7 +437,6 @@ export default class EEWParser {
     }
 
     /**
-     * Whether estimate intensity has changed.
      * 预测震度是否变化
      */
     get isMaximumSeismicIntensityChanged(): string {
@@ -444,7 +450,6 @@ export default class EEWParser {
     }
 
     /**
-     * Whether the maximum estimate seismic intensity has increased by 1 or more.
      * 最大预测震度是否上升1或更多
      */
     get isMaximumSeismicIntensityIncreased(): boolean {
@@ -453,7 +458,6 @@ export default class EEWParser {
     }
 
     /**
-     * Whether the maximum estimate seismic intensity has decreased by 1 or more.
      * 最大预测震度是否下降1或更多
      */
     get isMaximumSeismicIntensityDecreased(): boolean {
@@ -462,9 +466,7 @@ export default class EEWParser {
     }
 
     /**
-     * Seismic Intensity Change Reason
      * 最大预测震度变化理由
-     * 最大予測震度の変化の理由
      * @returns {string}
      */
     get maximumSeismicIntensityChangeReason(): string {
@@ -477,6 +479,9 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * 地区预计震度及到达时间
+     */
     get ebi() {
         const result = [];
         if (this.parsedTelegram.forecast.indexOf('EBI') === -1) {
@@ -485,7 +490,7 @@ export default class EEWParser {
         const startIndex = this.parsedTelegram.forecast.indexOf('EBI') + 4;
         const ebiPart = this.parsedTelegram.forecast.slice(startIndex);
         let nowIndex = 0;
-        while(nowIndex < ebiPart.length - 4) {
+        while (nowIndex < ebiPart.length - 4) {
             const areaName = Definitions.AreaCode[utils.fastsub(ebiPart, nowIndex, 3)];
             const minimumSeismicIntensity = Definitions.SeismicIntensity[utils.fastsub(ebiPart, nowIndex + 5, 2)];
             const maximumSeismicIntensity = Definitions.SeismicIntensity[utils.fastsub(ebiPart, nowIndex + 7, 2)];
@@ -524,6 +529,10 @@ export default class EEWParser {
      *      警报属性解析
      * ====================
      */
+
+    /**
+     * 警报编号
+     */
     @warningOnly()
     get warningNumber(): number {
         const warningNumber = utils.fastsub(this.parsedTelegram.warning, 21, 2)
@@ -552,24 +561,32 @@ export default class EEWParser {
 
     // Region: 地方 Prefecture: 都道府県 Area: 地域
 
+    /**
+     * 是否增加了新的警报地方
+     */
     @warningOnly()
     get hasAdditionalWarningRegion(): boolean {
         return utils.fastsub(this.parsedTelegram.warning, 47, 1) === "1";
     }
 
+    /**
+     * 是否增加了新的警报都道府県
+     */
     @warningOnly()
     get hasAdditionalWarningPrefecture(): boolean {
         return utils.fastsub(this.parsedTelegram.warning, 48, 1) === "1";
     }
 
+    /**
+     * 是否增加了新的警报地域
+     */
     @warningOnly()
     get hasAdditionalWarningArea(): boolean {
         return utils.fastsub(this.parsedTelegram.warning, 49, 1) === "1";
     }
 
     /**
-     * Reason of the addition of warning region/prefecture/area.
-     * 強い揺れが推定される地域の追加の理由
+     * 警报区域追加的理由
      * @returns {string}
      */
     @warningOnly()
@@ -584,7 +601,6 @@ export default class EEWParser {
     }
 
     /**
-     * Forecast method of warning areas
      * 警报区域预报方法
      * @returns {string}
      */
@@ -599,8 +615,11 @@ export default class EEWParser {
         }
     }
 
+    /**
+     * 警报追加的地方
+     */
     @warningOnly()
-    get additionalWarningRegion() {
+    get additionalWarningRegion(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('CAI') + 4;
         const endIndex = this.parsedTelegram.warning.indexOf('CPI') - 1;
         const CAIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
@@ -614,8 +633,11 @@ export default class EEWParser {
         return result;
     }
 
+    /**
+     * 警报追加的都道府県
+     */
     @warningOnly()
-    get additionalWarningPrefecture() {
+    get additionalWarningPrefecture(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('CPI') + 4;
         const endIndex = this.parsedTelegram.warning.indexOf('CBI') - 1;
         const CPIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
@@ -629,8 +651,11 @@ export default class EEWParser {
         return result;
     }
 
+    /**
+     * 警报追加的地域
+     */
     @warningOnly()
-    get additionalWarningArea() {
+    get additionalWarningArea(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('CBI') + 4;
         const endIndex = this.parsedTelegram.warning.indexOf('PAI') - 1;
         const CBIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
@@ -644,8 +669,11 @@ export default class EEWParser {
         return result;
     }
 
+    /**
+     * 警报地方
+     */
     @warningOnly()
-    get warningRegion() {
+    get warningRegion(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('PAI') + 4;
         const endIndex = this.parsedTelegram.warning.indexOf('PPI') - 1;
         const PAIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
@@ -659,8 +687,11 @@ export default class EEWParser {
         return result;
     }
 
+    /**
+     * 警报都道府県
+     */
     @warningOnly()
-    get warningPrefecture() {
+    get warningPrefecture(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('PPI') + 4;
         const endIndex = this.parsedTelegram.warning.indexOf('PBI') - 1;
         const PPIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
@@ -674,8 +705,11 @@ export default class EEWParser {
         return result;
     }
 
+    /**
+     * 警报地域
+     */
     @warningOnly()
-    get warningArea() {
+    get warningArea(): string[] {
         const startIndex = this.parsedTelegram.warning.indexOf('PBI') + 4;
         const endIndex = this.parsedTelegram.warning.lastIndexOf('NCP') - 1;
         const PBIPart = this.parsedTelegram.warning.slice(startIndex, endIndex);
