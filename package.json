@@ -5,7 +5,7 @@
   "main": "./dist/index.ts",
   "scripts": {
     "test": "mocha -r ts-node/register tests/**/*",
-    "doc": "typedoc --out ./docs ./src/index.ts --excludeExternals --excludePrivate"
+    "doc": "typedoc --out ./docs ./src/index.ts --excludeExternals --excludePrivate && echo>./docs/.nojekyll"
   },
   "repository": {
     "type": "git",
